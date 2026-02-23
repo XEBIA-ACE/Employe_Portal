@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  # Angular development server
+  employee-portal-dev:
+    build:
+      context: .
+      target: builder
+    image: employee-portal:dev
+    container_name: employee-portal-dev
+    ports:
+      - "4200:4200"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+    command: npm start
+    networks:
+      - employee-portal-network
+
+  # Production-like nginx container
+  employee-portal-prod:
+    build:
+      context: .
+      target: production
+    image: employee-portal:prod
+    container_name: employee-portal-prod
+    ports:
+      - "8080:80"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - employee-portal-network
+    profiles:
+      - production
+
+networks:
+  employee-portal-network:
+    driver: bridge

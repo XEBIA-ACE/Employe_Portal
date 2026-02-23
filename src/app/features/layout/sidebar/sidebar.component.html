@@ -1,0 +1,39 @@
+<!-- Branding -->
+<div class="sidebar-brand">
+  <mat-icon class="brand-icon">business_center</mat-icon>
+  <span class="brand-name">Employee Portal</span>
+</div>
+
+<!-- User info -->
+<div class="sidebar-user" *ngIf="currentUser">
+  <div class="avatar">{{ userInitials }}</div>
+  <div class="user-info">
+    <span class="user-name">{{ currentUser.firstName }} {{ currentUser.lastName }}</span>
+    <span class="user-role">{{ currentUser.role | titlecase }}</span>
+  </div>
+</div>
+
+<mat-divider class="sidebar-divider"></mat-divider>
+
+<!-- Navigation -->
+<nav class="sidebar-nav">
+  <a
+    *ngFor="let item of navItems"
+    class="nav-item"
+    [routerLink]="item.route"
+    routerLinkActive="active"
+    (click)="closeSidenav.emit()"
+    *ngIf="isVisible(item)"
+  >
+    <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
+    <span class="nav-label">{{ item.label }}</span>
+  </a>
+</nav>
+
+<div class="sidebar-footer">
+  <mat-divider class="sidebar-divider"></mat-divider>
+  <a class="nav-item logout" (click)="logout()">
+    <mat-icon class="nav-icon">logout</mat-icon>
+    <span class="nav-label">Log Out</span>
+  </a>
+</div>

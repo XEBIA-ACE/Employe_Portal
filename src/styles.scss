@@ -1,0 +1,185 @@
+// Global styles for Employee Portal
+// Angular Material theme is loaded via angular.json
+
+// === Typography ===
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: Roboto, 'Helvetica Neue', sans-serif;
+}
+
+// === Layout utilities ===
+.flex-spacer {
+  flex: 1 1 auto;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.full-height {
+  height: 100%;
+}
+
+// === Spacing utilities ===
+.mt-1 { margin-top: 8px; }
+.mt-2 { margin-top: 16px; }
+.mt-3 { margin-top: 24px; }
+.mb-1 { margin-bottom: 8px; }
+.mb-2 { margin-bottom: 16px; }
+.mb-3 { margin-bottom: 24px; }
+.ml-1 { margin-left: 8px; }
+.ml-2 { margin-left: 16px; }
+.mr-1 { margin-right: 8px; }
+.mr-2 { margin-right: 16px; }
+.p-1 { padding: 8px; }
+.p-2 { padding: 16px; }
+.p-3 { padding: 24px; }
+
+// === Text utilities ===
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-muted { color: rgba(0, 0, 0, 0.54); }
+.text-primary { color: #3f51b5; }
+.text-success { color: #4caf50; }
+.text-warning { color: #ff9800; }
+.text-danger { color: #f44336; }
+
+// === Card styles ===
+.stat-card {
+  border-radius: 8px;
+  padding: 24px;
+
+  mat-icon {
+    font-size: 48px;
+    height: 48px;
+    width: 48px;
+  }
+}
+
+// === Table styles ===
+.table-container {
+  overflow-x: auto;
+
+  table {
+    width: 100%;
+  }
+}
+
+// === Loading overlay ===
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+// === Page container ===
+.page-container {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+
+  @media (max-width: 600px) {
+    padding: 16px;
+  }
+}
+
+// === Status chips ===
+.status-chip {
+  &.active {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+  }
+
+  &.inactive {
+    background-color: #ffebee;
+    color: #c62828;
+  }
+
+  &.pending {
+    background-color: #fff3e0;
+    color: #e65100;
+  }
+}
+
+// === Avatar ===
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  font-size: 16px;
+  color: white;
+  background-color: #3f51b5;
+  flex-shrink: 0;
+}
+
+// === Form field overrides ===
+.mat-mdc-form-field {
+  width: 100%;
+}
+
+// === Snackbar ===
+.success-snackbar {
+  --mdc-snackbar-container-color: #43a047;
+  --mdc-snackbar-supporting-text-color: white;
+}
+
+.error-snackbar {
+  --mdc-snackbar-container-color: #e53935;
+  --mdc-snackbar-supporting-text-color: white;
+}
+
+.warning-snackbar {
+  --mdc-snackbar-container-color: #fb8c00;
+  --mdc-snackbar-supporting-text-color: white;
+}
+
+// === Responsive grid ===
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+
+  @media (max-width: 1200px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
+}

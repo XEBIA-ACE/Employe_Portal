@@ -1,0 +1,7 @@
+<!-- Global loading overlay -->
+<div class="loading-overlay" *ngIf="isLoading$ | async">
+  <mat-spinner diameter="48"></mat-spinner>
+</div>
+
+<!-- Router outlet: renders auth pages or the layout shell -->
+<router-outlet></router-outlet>

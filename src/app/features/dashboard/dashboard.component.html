@@ -1,0 +1,124 @@
+<div class="page-container">
+  <!-- Page header -->
+  <div class="dashboard-greeting">
+    <h1>{{ greeting }}, {{ authService.currentUser?.firstName || 'there' }}!</h1>
+    <p class="text-muted">Here's what's happening today</p>
+  </div>
+
+  <!-- Loading state -->
+  <app-loading-spinner *ngIf="isLoading" message="Loading dashboard..."></app-loading-spinner>
+
+  <ng-container *ngIf="!isLoading && stats">
+    <!-- Stats Cards -->
+    <div class="grid-4 mb-3">
+      <!-- Total Employees -->
+      <mat-card class="stat-card stat-card--blue">
+        <mat-card-content>
+          <div class="stat-card__content">
+            <div>
+              <div class="stat-value">{{ stats.totalEmployees }}</div>
+              <div class="stat-label">Total Employees</div>
+            </div>
+            <mat-icon class="stat-icon">people</mat-icon>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Active Employees -->
+      <mat-card class="stat-card stat-card--green">
+        <mat-card-content>
+          <div class="stat-card__content">
+            <div>
+              <div class="stat-value">{{ stats.activeEmployees }}</div>
+              <div class="stat-label">Active Employees</div>
+            </div>
+            <mat-icon class="stat-icon">person_check</mat-icon>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- New Hires -->
+      <mat-card class="stat-card stat-card--orange">
+        <mat-card-content>
+          <div class="stat-card__content">
+            <div>
+              <div class="stat-value">{{ stats.newHiresThisMonth }}</div>
+              <div class="stat-label">New Hires This Month</div>
+            </div>
+            <mat-icon class="stat-icon">person_add</mat-icon>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Departments -->
+      <mat-card class="stat-card stat-card--purple">
+        <mat-card-content>
+          <div class="stat-card__content">
+            <div>
+              <div class="stat-value">{{ stats.totalDepartments }}</div>
+              <div class="stat-label">Departments</div>
+            </div>
+            <mat-icon class="stat-icon">business</mat-icon>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Bottom section: Recent Hires + Department Breakdown -->
+    <div class="grid-2">
+      <!-- Recent Hires -->
+      <mat-card>
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon class="card-title-icon">schedule</mat-icon>
+            Recent Hires
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <mat-list>
+            <mat-list-item *ngFor="let hire of recentHires" class="hire-item">
+              <div class="hire-avatar" matListItemAvatar>
+                {{ hire.name.charAt(0) }}
+              </div>
+              <div matListItemTitle>{{ hire.name }}</div>
+              <div matListItemLine class="text-muted">{{ hire.jobTitle }} — {{ hire.departmentName }}</div>
+              <div matListItemMeta class="text-muted hire-date">
+                {{ hire.hireDate | date:'mediumDate' }}
+              </div>
+            </mat-list-item>
+          </mat-list>
+          <div class="text-center mt-2" *ngIf="authService.hasAnyRole(['admin', 'hr'] as any)">
+            <a mat-button color="primary" routerLink="/employees">View All Employees</a>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Department Breakdown -->
+      <mat-card>
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon class="card-title-icon">pie_chart</mat-icon>
+            Employees by Department
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="dept-breakdown">
+            <div *ngFor="let dept of stats.employeesByDepartment" class="dept-row">
+              <div class="dept-info">
+                <span class="dept-name">{{ dept.departmentName }}</span>
+                <span class="dept-count">{{ dept.count }}</span>
+              </div>
+              <mat-progress-bar
+                mode="determinate"
+                [value]="dept.percentage"
+                color="primary"
+                class="dept-bar"
+              ></mat-progress-bar>
+              <span class="dept-pct text-muted">{{ dept.percentage }}%</span>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </ng-container>
+</div>

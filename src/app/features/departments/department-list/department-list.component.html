@@ -1,0 +1,75 @@
+<div class="page-container">
+  <app-page-header
+    title="Departments"
+    subtitle="Manage organizational departments"
+    icon="business"
+  >
+    <button
+      mat-raised-button
+      color="primary"
+      routerLink="/departments/new"
+      *appHasRole="['admin']"
+    >
+      <mat-icon>add</mat-icon>
+      Add Department
+    </button>
+  </app-page-header>
+
+  <!-- Search -->
+  <mat-form-field appearance="outline" class="search-field mb-2">
+    <mat-label>Search departments</mat-label>
+    <mat-icon matPrefix>search</mat-icon>
+    <input matInput [(ngModel)]="searchTerm" (ngModelChange)="applySearch()" placeholder="Name or code..." />
+  </mat-form-field>
+
+  <!-- Loading -->
+  <app-loading-spinner *ngIf="isLoading"></app-loading-spinner>
+
+  <!-- Department cards -->
+  <div class="grid-3" *ngIf="!isLoading">
+    <mat-card class="dept-card" *ngFor="let dept of filteredDepartments">
+      <mat-card-header>
+        <div class="dept-code-badge" mat-card-avatar>{{ dept.code }}</div>
+        <mat-card-title>{{ dept.name }}</mat-card-title>
+        <mat-card-subtitle>{{ dept.location }}</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <p *ngIf="dept.description" class="dept-desc">{{ dept.description }}</p>
+
+        <div class="dept-stats">
+          <div class="dept-stat">
+            <mat-icon>people</mat-icon>
+            <span>{{ dept.employeeCount ?? 0 }} employees</span>
+          </div>
+          <div class="dept-stat" *ngIf="dept.managerName">
+            <mat-icon>manage_accounts</mat-icon>
+            <span>{{ dept.managerName }}</span>
+          </div>
+        </div>
+
+        <mat-chip
+          class="status-chip mt-1"
+          [ngClass]="dept.isActive ? 'active' : 'inactive'"
+        >
+          {{ dept.isActive ? 'Active' : 'Inactive' }}
+        </mat-chip>
+      </mat-card-content>
+
+      <mat-card-actions align="end" *appHasRole="['admin']">
+        <button mat-icon-button matTooltip="Edit" (click)="editDepartment(dept.id, $event)">
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button mat-icon-button matTooltip="Delete" color="warn" (click)="deleteDepartment(dept, $event)">
+          <mat-icon>delete</mat-icon>
+        </button>
+      </mat-card-actions>
+    </mat-card>
+
+    <!-- Empty state -->
+    <div class="empty-state" *ngIf="filteredDepartments.length === 0">
+      <mat-icon>business_center</mat-icon>
+      <p>No departments found.</p>
+    </div>
+  </div>
+</div>

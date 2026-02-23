@@ -1,0 +1,73 @@
+<div class="page-container">
+  <app-page-header
+    [title]="isEditMode ? 'Edit Department' : 'Add Department'"
+    [subtitle]="isEditMode ? 'Update department information' : 'Create a new department'"
+    icon="business"
+  >
+    <button mat-button (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+      Back
+    </button>
+  </app-page-header>
+
+  <app-loading-spinner *ngIf="isLoading"></app-loading-spinner>
+
+  <mat-card *ngIf="!isLoading">
+    <mat-card-content class="p-2">
+      <form [formGroup]="form" (ngSubmit)="onSubmit()">
+        <div class="grid-2">
+          <mat-form-field appearance="outline">
+            <mat-label>Department Name *</mat-label>
+            <input matInput formControlName="name" />
+            <mat-error *ngIf="form.get('name')?.hasError('required')">Name is required</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Code *</mat-label>
+            <input matInput formControlName="code" placeholder="ENG" style="text-transform: uppercase" />
+            <mat-hint>Short identifier (e.g. ENG, HR, FIN)</mat-hint>
+            <mat-error *ngIf="form.get('code')?.hasError('required')">Code is required</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Location</mat-label>
+            <input matInput formControlName="location" placeholder="City, State" />
+          </mat-form-field>
+
+          <div class="status-toggle">
+            <mat-checkbox formControlName="isActive" color="primary">
+              Department is active
+            </mat-checkbox>
+          </div>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Budget</mat-label>
+            <input matInput type="number" formControlName="budget" />
+            <span matPrefix>$&nbsp;</span>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Currency</mat-label>
+            <mat-select formControlName="currency">
+              <mat-option value="USD">USD</mat-option>
+              <mat-option value="EUR">EUR</mat-option>
+              <mat-option value="GBP">GBP</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <mat-form-field appearance="outline" class="full-width mt-1">
+          <mat-label>Description</mat-label>
+          <textarea matInput formControlName="description" rows="3"></textarea>
+        </mat-form-field>
+
+        <div class="form-actions mt-2">
+          <button mat-button type="button" (click)="goBack()">Cancel</button>
+          <button mat-raised-button color="primary" type="submit" [disabled]="isSaving">
+            {{ isSaving ? 'Saving...' : (isEditMode ? 'Update' : 'Create') }}
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>
