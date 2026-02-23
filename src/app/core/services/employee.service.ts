@@ -4,111 +4,98 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   Employee,
-  EmployeeListItem,
-  EmployeeFormData,
-  EmployeeFilter,
-  EmployeeStats,
-  Department,
+  EmployeeCreateRequest,
+  EmployeeUpdateRequest,
+  EmployeeFilters,
+  EmployeeSummary,
 } from '../models/employee.model';
-import {
-  ApiResponse,
-  PaginatedResponse,
-  PaginationParams,
-} from '../models/api-response.model';
+import { ApiResponse, PaginatedResponse } from '../models/api-response.model';
 
-/**
- * Employee CRUD service.
- * All methods return typed Observables; components subscribe
- * and handle loading/error state via the UI.
- */
 @Injectable({ providedIn: 'root' })
 export class EmployeeService {
-  private readonly baseUrl = `${environment.apiBaseUrl}/employees`;
-  private readonly deptUrl = `${environment.apiBaseUrl}/departments`;
+  private readonly apiUrl = `${environment.apiBaseUrl}/employees`;
 
   constructor(private http: HttpClient) {}
 
-  // ─── Employee endpoints ───────────────────────────────────────────────
+  // ─── CRUD Operations ──────────────────────────────────────────────────────
 
+  /**
+   * Retrieve a paginated, filtered list of employees.
+   * Supports search, department filter, status filter, sorting, and pagination.
+   */
   getEmployees(
-    pagination: PaginationParams,
-    filters?: EmployeeFilter,
-  ): Observable<PaginatedResponse<EmployeeListItem>> {
-    let params = new HttpParams()
-      .set('page', pagination.page.toString())
-      .set('pageSize', pagination.pageSize.toString());
-
-    if (pagination.sortBy) params = params.set('sortBy', pagination.sortBy);
-    if (pagination.sortOrder) params = params.set('sortOrder', pagination.sortOrder);
-    if (filters?.search) params = params.set('search', filters.search);
-    if (filters?.departmentId) params = params.set('departmentId', filters.departmentId);
-    if (filters?.status) params = params.set('status', filters.status);
-    if (filters?.employmentType) params = params.set('employmentType', filters.employmentType);
-    if (filters?.managerId) params = params.set('managerId', filters.managerId);
-
-    return this.http.get<PaginatedResponse<EmployeeListItem>>(this.baseUrl, { params });
+    filters: EmployeeFilters = {},
+  ): Observable<PaginatedResponse<Employee>> {
+    const params = this.buildParams(filters);
+    return this.http.get<PaginatedResponse<Employee>>(this.apiUrl, { params });
   }
 
-  getEmployeeById(id: string): Observable<ApiResponse<Employee>> {
-    return this.http.get<ApiResponse<Employee>>(`${this.baseUrl}/${id}`);
+  getEmployee(id: string): Observable<ApiResponse<Employee>> {
+    return this.http.get<ApiResponse<Employee>>(`${this.apiUrl}/${id}`);
   }
 
-  createEmployee(data: EmployeeFormData): Observable<ApiResponse<Employee>> {
-    return this.http.post<ApiResponse<Employee>>(this.baseUrl, data);
+  createEmployee(
+    payload: EmployeeCreateRequest,
+  ): Observable<ApiResponse<Employee>> {
+    return this.http.post<ApiResponse<Employee>>(this.apiUrl, payload);
   }
 
-  updateEmployee(id: string, data: Partial<EmployeeFormData>): Observable<ApiResponse<Employee>> {
-    return this.http.put<ApiResponse<Employee>>(`${this.baseUrl}/${id}`, data);
+  updateEmployee(
+    id: string,
+    payload: EmployeeUpdateRequest,
+  ): Observable<ApiResponse<Employee>> {
+    return this.http.patch<ApiResponse<Employee>>(`${this.apiUrl}/${id}`, payload);
   }
 
   deleteEmployee(id: string): Observable<ApiResponse<void>> {
-    return this.http.delete<ApiResponse<void>>(`${this.baseUrl}/${id}`);
+    return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/${id}`);
   }
 
-  getEmployeeStats(): Observable<ApiResponse<EmployeeStats>> {
-    return this.http.get<ApiResponse<EmployeeStats>>(`${this.baseUrl}/stats`);
-  }
+  // ─── Additional Endpoints ─────────────────────────────────────────────────
 
-  /** Upload employee profile photo; returns the avatar URL */
-  uploadAvatar(id: string, file: File): Observable<ApiResponse<{ avatarUrl: string }>> {
-    const form = new FormData();
-    form.append('file', file);
-    return this.http.post<ApiResponse<{ avatarUrl: string }>>(
-      `${this.baseUrl}/${id}/avatar`,
-      form,
+  /**
+   * Dashboard summary statistics.
+   */
+  getSummary(): Observable<ApiResponse<EmployeeSummary>> {
+    return this.http.get<ApiResponse<EmployeeSummary>>(
+      `${this.apiUrl}/summary`,
     );
   }
 
-  exportEmployees(format: 'csv' | 'xlsx', filters?: EmployeeFilter): Observable<Blob> {
-    let params = new HttpParams().set('format', format);
-    if (filters?.departmentId) params = params.set('departmentId', filters.departmentId);
-    if (filters?.status) params = params.set('status', filters.status);
+  /**
+   * Upload an avatar photo for an employee.
+   * Returns the new avatarUrl on success.
+   */
+  uploadAvatar(id: string, file: File): Observable<ApiResponse<{ avatarUrl: string }>> {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    return this.http.post<ApiResponse<{ avatarUrl: string }>>(
+      `${this.apiUrl}/${id}/avatar`,
+      formData,
+    );
+  }
 
-    return this.http.get(`${this.baseUrl}/export`, {
+  /**
+   * Export the employee list as CSV.
+   * The blob can be downloaded by the browser using a temporary <a> element.
+   */
+  exportCsv(filters: EmployeeFilters = {}): Observable<Blob> {
+    const params = this.buildParams(filters);
+    return this.http.get(`${this.apiUrl}/export/csv`, {
       params,
       responseType: 'blob',
     });
   }
 
-  // ─── Department endpoints ─────────────────────────────────────────────
+  // ─── Private Helpers ──────────────────────────────────────────────────────
 
-  getDepartments(): Observable<ApiResponse<Department[]>> {
-    return this.http.get<ApiResponse<Department[]>>(this.deptUrl);
-  }
-
-  getDepartmentById(id: string): Observable<ApiResponse<Department>> {
-    return this.http.get<ApiResponse<Department>>(`${this.deptUrl}/${id}`);
-  }
-
-  createDepartment(data: Partial<Department>): Observable<ApiResponse<Department>> {
-    return this.http.post<ApiResponse<Department>>(this.deptUrl, data);
-  }
-
-  updateDepartment(id: string, data: Partial<Department>): Observable<ApiResponse<Department>> {
-    return this.http.put<ApiResponse<Department>>(`${this.deptUrl}/${id}`, data);
-  }
-
-  deleteDepartment(id: string): Observable<ApiResponse<void>> {
-    return this.http.delete<ApiResponse<void>>(`${this.deptUrl}/${id}`);
+  private buildParams(filters: EmployeeFilters): HttpParams {
+    let params = new HttpParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        params = params.set(key, String(value));
+      }
+    });
+    return params;
   }
 }

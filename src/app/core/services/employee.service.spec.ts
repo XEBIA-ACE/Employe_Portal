@@ -4,50 +4,35 @@ import {
   HttpTestingController,
 } from '@angular/common/http/testing';
 import { EmployeeService } from './employee.service';
+import { Employee } from '../models/employee.model';
 import { environment } from '../../../environments/environment';
-import { PaginatedResponse, ApiResponse } from '../models/api-response.model';
-import { EmployeeListItem, Department } from '../models/employee.model';
-
-const mockPagination = { page: 1, pageSize: 10 };
-
-const mockEmployeeListItem: EmployeeListItem = {
-  id: 'e1',
-  employeeId: 'EMP-001',
-  firstName: 'Alice',
-  lastName: 'Johnson',
-  email: 'alice@example.com',
-  jobTitle: 'Engineer',
-  department: 'Engineering',
-  departmentId: 'd1',
-  status: 'active',
-  employmentType: 'full-time',
-  hireDate: '2021-03-15',
-};
-
-const mockPaginatedResponse: PaginatedResponse<EmployeeListItem> = {
-  data: [mockEmployeeListItem],
-  pagination: {
-    page: 1,
-    pageSize: 10,
-    total: 1,
-    totalPages: 1,
-    hasNext: false,
-    hasPrevious: false,
-  },
-  success: true,
-  timestamp: new Date().toISOString(),
-};
 
 describe('EmployeeService', () => {
   let service: EmployeeService;
   let httpMock: HttpTestingController;
-  const baseUrl = `${environment.apiBaseUrl}/employees`;
+
+  const mockEmployee: Employee = {
+    id: 'emp-1',
+    employeeId: 'EMP-00001',
+    firstName: 'Jane',
+    lastName: 'Smith',
+    email: 'jane.smith@example.com',
+    jobTitle: 'Software Engineer',
+    departmentId: 'dept-1',
+    departmentName: 'Engineering',
+    employmentType: 'full_time',
+    employmentStatus: 'active',
+    startDate: '2022-01-15',
+    createdAt: '2022-01-01T00:00:00Z',
+    updatedAt: '2023-01-01T00:00:00Z',
+  };
 
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
       providers: [EmployeeService],
     });
+
     service = TestBed.inject(EmployeeService);
     httpMock = TestBed.inject(HttpTestingController);
   });
@@ -59,67 +44,99 @@ describe('EmployeeService', () => {
   });
 
   describe('getEmployees()', () => {
-    it('should call GET /employees with pagination params', () => {
-      service.getEmployees(mockPagination).subscribe((res) => {
+    it('should GET /employees with no params by default', () => {
+      const mockResponse = {
+        data: [mockEmployee],
+        pagination: {
+          page: 1,
+          pageSize: 20,
+          totalItems: 1,
+          totalPages: 1,
+          hasNextPage: false,
+          hasPreviousPage: false,
+        },
+        timestamp: new Date().toISOString(),
+      };
+
+      service.getEmployees().subscribe((res) => {
         expect(res.data.length).toBe(1);
-        expect(res.data[0].employeeId).toBe('EMP-001');
-        expect(res.pagination.total).toBe(1);
+        expect(res.data[0]).toEqual(mockEmployee);
       });
 
       const req = httpMock.expectOne(
-        (r) => r.url === baseUrl && r.params.get('page') === '1',
+        `${environment.apiBaseUrl}/employees`,
       );
       expect(req.request.method).toBe('GET');
-      req.flush(mockPaginatedResponse);
+      req.flush(mockResponse);
     });
 
-    it('should append search filter to query params', () => {
-      service.getEmployees(mockPagination, { search: 'Alice' }).subscribe();
+    it('should include filter params in the request', () => {
+      service
+        .getEmployees({ search: 'Jane', departmentId: 'dept-1', page: 2 })
+        .subscribe();
+
+      const req = httpMock.expectOne((r) =>
+        r.url === `${environment.apiBaseUrl}/employees`,
+      );
+
+      expect(req.request.params.get('search')).toBe('Jane');
+      expect(req.request.params.get('departmentId')).toBe('dept-1');
+      expect(req.request.params.get('page')).toBe('2');
+      req.flush({ data: [], pagination: {}, timestamp: '' });
+    });
+  });
+
+  describe('getEmployee()', () => {
+    it('should GET a single employee by id', () => {
+      const mockResponse = {
+        data: mockEmployee,
+        timestamp: new Date().toISOString(),
+      };
+
+      service.getEmployee('emp-1').subscribe((res) => {
+        expect(res.data).toEqual(mockEmployee);
+      });
 
       const req = httpMock.expectOne(
-        (r) => r.url === baseUrl && r.params.get('search') === 'Alice',
+        `${environment.apiBaseUrl}/employees/emp-1`,
       );
-      req.flush(mockPaginatedResponse);
+      expect(req.request.method).toBe('GET');
+      req.flush(mockResponse);
+    });
+  });
+
+  describe('createEmployee()', () => {
+    it('should POST new employee data', () => {
+      const payload = {
+        firstName: 'Jane',
+        lastName: 'Smith',
+        email: 'jane@example.com',
+        jobTitle: 'Engineer',
+        departmentId: 'dept-1',
+        employmentType: 'full_time' as const,
+        startDate: '2024-01-01',
+      };
+      const mockResponse = { data: mockEmployee, timestamp: '' };
+
+      service.createEmployee(payload).subscribe((res) => {
+        expect(res.data).toEqual(mockEmployee);
+      });
+
+      const req = httpMock.expectOne(`${environment.apiBaseUrl}/employees`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual(payload);
+      req.flush(mockResponse);
     });
   });
 
   describe('deleteEmployee()', () => {
-    it('should call DELETE /employees/:id', () => {
-      const mockResponse: ApiResponse<void> = {
-        data: undefined as unknown as void,
-        success: true,
-        timestamp: new Date().toISOString(),
-      };
-
-      service.deleteEmployee('e1').subscribe((res) => {
-        expect(res.success).toBeTrue();
-      });
-
-      const req = httpMock.expectOne(`${baseUrl}/e1`);
+    it('should DELETE an employee', () => {
+      service.deleteEmployee('emp-1').subscribe();
+      const req = httpMock.expectOne(
+        `${environment.apiBaseUrl}/employees/emp-1`,
+      );
       expect(req.request.method).toBe('DELETE');
-      req.flush(mockResponse);
-    });
-  });
-
-  describe('getDepartments()', () => {
-    it('should call GET /departments', () => {
-      const depts: Department[] = [
-        { id: 'd1', name: 'Engineering', code: 'ENG', createdAt: '', updatedAt: '' },
-      ];
-      const mockResponse: ApiResponse<Department[]> = {
-        data: depts,
-        success: true,
-        timestamp: new Date().toISOString(),
-      };
-
-      service.getDepartments().subscribe((res) => {
-        expect(res.data.length).toBe(1);
-        expect(res.data[0].name).toBe('Engineering');
-      });
-
-      const req = httpMock.expectOne(`${environment.apiBaseUrl}/departments`);
-      expect(req.request.method).toBe('GET');
-      req.flush(mockResponse);
+      req.flush({ data: null, timestamp: '' });
     });
   });
 });

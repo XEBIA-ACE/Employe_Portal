@@ -1,155 +1,132 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, tap, catchError, throwError } from 'rxjs';
+import { BehaviorSubject, Observable, tap, catchError, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
-  LoginRequest,
-  LoginResponse,
   User,
-  RegisterRequest,
+  LoginCredentials,
+  LoginResponse,
+  AuthTokens,
   ChangePasswordRequest,
-  UpdateProfileRequest,
-  RefreshTokenRequest,
 } from '../models/user.model';
 import { ApiResponse } from '../models/api-response.model';
-import { LoggerService } from './logger.service';
-import { NotificationService } from './notification.service';
 
-const TOKEN_KEY = 'ep_access_token';
+const TOKEN_KEY         = 'ep_access_token';
 const REFRESH_TOKEN_KEY = 'ep_refresh_token';
-const USER_KEY = 'ep_user';
+const USER_KEY          = 'ep_current_user';
 
-/**
- * Authentication service handling login, logout, token management,
- * and exposing the current user state via Angular signals.
- */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly apiUrl = `${environment.apiBaseUrl}/auth`;
 
-  // Reactive state via Angular 17 signals
-  private readonly _currentUser = signal<User | null>(this.loadUserFromStorage());
-  private readonly _isLoading = signal(false);
+  /** Stream of the currently authenticated user; null when logged out. */
+  private currentUserSubject = new BehaviorSubject<User | null>(this.loadUser());
+  currentUser$ = this.currentUserSubject.asObservable();
 
-  readonly currentUser = this._currentUser.asReadonly();
-  readonly isAuthenticated = computed(() => this._currentUser() !== null);
-  readonly isLoading = this._isLoading.asReadonly();
-  readonly userRole = computed(() => this._currentUser()?.role ?? null);
+  constructor(private http: HttpClient, private router: Router) {}
 
-  constructor(
-    private http: HttpClient,
-    private router: Router,
-    private logger: LoggerService,
-    private notification: NotificationService,
-  ) {}
+  // ─── Getters ─────────────────────────────────────────────────────────────
 
-  login(credentials: LoginRequest): Observable<LoginResponse> {
-    this._isLoading.set(true);
-    return this.http.post<LoginResponse>(`${this.apiUrl}/login`, credentials).pipe(
-      tap((response) => {
-        this.storeTokens(response.accessToken, response.refreshToken);
-        this.storeUser(response.user);
-        this._currentUser.set(response.user);
-        this._isLoading.set(false);
-        this.logger.info('User logged in', 'AuthService', { userId: response.user.id });
-      }),
-      catchError((error) => {
-        this._isLoading.set(false);
-        this.logger.error('Login failed', 'AuthService', error);
-        return throwError(() => error);
-      }),
-    );
+  get currentUser(): User | null {
+    return this.currentUserSubject.value;
   }
 
-  register(data: RegisterRequest): Observable<ApiResponse<User>> {
-    this._isLoading.set(true);
-    return this.http.post<ApiResponse<User>>(`${this.apiUrl}/register`, data).pipe(
-      tap(() => this._isLoading.set(false)),
-      catchError((error) => {
-        this._isLoading.set(false);
-        return throwError(() => error);
-      }),
-    );
+  get isAuthenticated(): boolean {
+    return !!this.getAccessToken() && !!this.currentUser;
+  }
+
+  get userRole(): string {
+    return this.currentUser?.role ?? '';
+  }
+
+  // ─── Auth Actions ─────────────────────────────────────────────────────────
+
+  login(credentials: LoginCredentials): Observable<LoginResponse> {
+    return this.http
+      .post<LoginResponse>(`${this.apiUrl}/login`, credentials)
+      .pipe(
+        tap((response) => {
+          this.persistSession(response.user, response.tokens, credentials.rememberMe);
+        }),
+        catchError((err) => throwError(() => err)),
+      );
   }
 
   logout(): void {
-    const user = this._currentUser();
-    this.clearStorage();
-    this._currentUser.set(null);
-    this.logger.info('User logged out', 'AuthService', { userId: user?.id });
+    // Attempt a server-side logout (invalidates the refresh token)
+    this.http.post(`${this.apiUrl}/logout`, {}).subscribe({ error: () => {} });
+    this.clearSession();
     this.router.navigate(['/auth/login']);
-    this.notification.info('You have been signed out.');
   }
 
-  refreshToken(): Observable<LoginResponse> {
+  refreshToken(): Observable<AuthTokens> {
     const refreshToken = this.getRefreshToken();
-    if (!refreshToken) {
-      this.logout();
-      return throwError(() => new Error('No refresh token available'));
-    }
-
-    const payload: RefreshTokenRequest = { refreshToken };
-    return this.http.post<LoginResponse>(`${this.apiUrl}/refresh`, payload).pipe(
-      tap((response) => {
-        this.storeTokens(response.accessToken, response.refreshToken);
-        this.storeUser(response.user);
-        this._currentUser.set(response.user);
-      }),
-      catchError((error) => {
-        this.logout();
-        return throwError(() => error);
-      }),
-    );
+    return this.http
+      .post<AuthTokens>(`${this.apiUrl}/refresh`, { refreshToken })
+      .pipe(
+        tap((tokens) => {
+          this.setTokens(tokens);
+        }),
+      );
   }
 
-  changePassword(payload: ChangePasswordRequest): Observable<ApiResponse<void>> {
-    return this.http.post<ApiResponse<void>>(`${this.apiUrl}/change-password`, payload);
+  changePassword(request: ChangePasswordRequest): Observable<ApiResponse<void>> {
+    return this.http.post<ApiResponse<void>>(`${this.apiUrl}/change-password`, request);
   }
 
-  updateProfile(payload: UpdateProfileRequest): Observable<ApiResponse<User>> {
-    return this.http.put<ApiResponse<User>>(`${this.apiUrl}/profile`, payload).pipe(
-      tap((response) => {
-        this.storeUser(response.data);
-        this._currentUser.set(response.data);
-      }),
-    );
-  }
-
-  hasRole(...roles: string[]): boolean {
-    const userRole = this._currentUser()?.role;
-    return userRole ? roles.includes(userRole) : false;
-  }
+  // ─── Token Helpers ────────────────────────────────────────────────────────
 
   getAccessToken(): string | null {
-    return localStorage.getItem(TOKEN_KEY);
+    return (
+      sessionStorage.getItem(TOKEN_KEY) ?? localStorage.getItem(TOKEN_KEY)
+    );
   }
 
-  getRefreshToken(): string | null {
-    return localStorage.getItem(REFRESH_TOKEN_KEY);
+  private getRefreshToken(): string | null {
+    return (
+      sessionStorage.getItem(REFRESH_TOKEN_KEY) ??
+      localStorage.getItem(REFRESH_TOKEN_KEY)
+    );
   }
 
-  private storeTokens(accessToken: string, refreshToken: string): void {
-    localStorage.setItem(TOKEN_KEY, accessToken);
-    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  private setTokens(tokens: AuthTokens): void {
+    const store = localStorage.getItem(TOKEN_KEY)
+      ? localStorage
+      : sessionStorage;
+    store.setItem(TOKEN_KEY, tokens.accessToken);
+    store.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
   }
 
-  private storeUser(user: User): void {
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  private persistSession(
+    user: User,
+    tokens: AuthTokens,
+    rememberMe = false,
+  ): void {
+    const store = rememberMe ? localStorage : sessionStorage;
+    store.setItem(TOKEN_KEY, tokens.accessToken);
+    store.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+    store.setItem(USER_KEY, JSON.stringify(user));
+    this.currentUserSubject.next(user);
   }
 
-  private loadUserFromStorage(): User | null {
+  private clearSession(): void {
+    [localStorage, sessionStorage].forEach((store) => {
+      store.removeItem(TOKEN_KEY);
+      store.removeItem(REFRESH_TOKEN_KEY);
+      store.removeItem(USER_KEY);
+    });
+    this.currentUserSubject.next(null);
+  }
+
+  private loadUser(): User | null {
+    const json =
+      sessionStorage.getItem(USER_KEY) ?? localStorage.getItem(USER_KEY);
+    if (!json) return null;
     try {
-      const raw = localStorage.getItem(USER_KEY);
-      return raw ? (JSON.parse(raw) as User) : null;
+      return JSON.parse(json) as User;
     } catch {
       return null;
     }
-  }
-
-  private clearStorage(): void {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
   }
 }

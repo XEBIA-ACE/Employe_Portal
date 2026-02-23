@@ -1,137 +1,120 @@
-<div class="page-container">
-  <!-- Page header -->
-  <div class="section-header">
+<div class="page-content">
+  <!-- Page Header -->
+  <div class="page-header">
     <div>
-      <h2>Dashboard</h2>
-      <p class="text-muted">
-        Welcome back, {{ authService.currentUser()?.firstName }}! Here's what's happening.
+      <h2 class="page-header__title">
+        {{ greeting }}, {{ currentUser?.firstName || 'User' }}!
+      </h2>
+      <p class="page-header__subtitle">
+        Here's what's happening in your organization today.
       </p>
     </div>
-    <button mat-raised-button color="primary" routerLink="/employees/new">
-      <mat-icon>person_add</mat-icon>
-      Add Employee
-    </button>
+    <div class="page-header__actions">
+      <button class="btn btn--secondary" (click)="loadSummary()">
+        ↻ Refresh
+      </button>
+      <a routerLink="/employees/new" class="btn btn--primary">
+        + Add Employee
+      </a>
+    </div>
   </div>
 
-  @if (isLoading) {
-    <app-loading-spinner message="Loading dashboard…"></app-loading-spinner>
-  } @else {
+  <!-- Loading Skeleton -->
+  <ng-container *ngIf="isLoading">
+    <div class="stats-grid">
+      <div *ngFor="let _ of [1,2,3,4]" class="stat-card skeleton-card">
+        <div class="skeleton" style="width:56px; height:56px; border-radius:8px;"></div>
+        <div style="flex:1">
+          <div class="skeleton" style="width:60%; height:28px; margin-bottom:8px;"></div>
+          <div class="skeleton" style="width:40%; height:14px;"></div>
+        </div>
+      </div>
+    </div>
+  </ng-container>
 
-    <!-- KPI stat cards -->
-    <div class="stat-cards-grid">
-      @for (card of statCards; track card.title) {
-        <mat-card class="stat-card" [class.clickable]="!!card.route" [routerLink]="card.route">
-          <mat-card-content>
-            <div class="stat-card-body">
-              <div class="stat-info">
-                <p class="stat-label">{{ card.title }}</p>
-                <p class="stat-value">{{ card.value | number }}</p>
-                @if (card.change !== undefined) {
-                  <p class="stat-change" [class.positive]="card.change >= 0">
-                    <mat-icon>{{ card.change >= 0 ? 'trending_up' : 'trending_down' }}</mat-icon>
-                    {{ card.change >= 0 ? '+' : '' }}{{ card.change }}% this month
-                  </p>
-                }
-              </div>
-              <div class="stat-icon-wrapper" [style.background]="card.color + '20'">
-                <mat-icon [style.color]="card.color">{{ card.icon }}</mat-icon>
-              </div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-      }
+  <!-- Error State -->
+  <div *ngIf="error && !isLoading" class="empty-state">
+    <div class="empty-state__icon">⚠️</div>
+    <h3 class="empty-state__title">Unable to Load Data</h3>
+    <p class="empty-state__message">{{ error }}</p>
+    <button class="btn btn--primary" (click)="loadSummary()">Try Again</button>
+  </div>
+
+  <!-- Dashboard Content -->
+  <ng-container *ngIf="summary && !isLoading">
+    <!-- Stat Cards -->
+    <div class="stats-grid">
+      <div
+        *ngFor="let card of statCards"
+        class="stat-card"
+      >
+        <div
+          class="stat-card__icon"
+          [style.background]="card.color"
+        >
+          {{ card.icon }}
+        </div>
+        <div class="stat-card__content">
+          <div class="stat-card__value">{{ getSummaryValue(card.key) | number }}</div>
+          <div class="stat-card__label">{{ card.label }}</div>
+        </div>
+      </div>
     </div>
 
-    <div class="dashboard-grid">
-      <!-- Employees by department -->
-      <mat-card class="chart-card">
-        <mat-card-header>
-          <mat-card-title>Employees by Department</mat-card-title>
-          <mat-card-subtitle>Headcount distribution</mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content>
-          @for (dept of stats?.byDepartment; track dept.department) {
-            <div class="dept-row">
-              <span class="dept-name">{{ dept.department }}</span>
-              <div class="dept-bar-wrapper">
-                <mat-progress-bar
-                  mode="determinate"
-                  [value]="(dept.count / (stats?.total ?? 1)) * 100"
-                  color="primary"
-                ></mat-progress-bar>
+    <!-- Charts Row -->
+    <div class="dashboard-grid mt-lg">
+      <!-- Department Breakdown -->
+      <div class="card">
+        <div class="card__header">
+          <h3 class="card__title">Employees by Department</h3>
+        </div>
+        <div class="card__body">
+          <div class="dept-list">
+            <div
+              *ngFor="let dept of summary.departmentBreakdown"
+              class="dept-list__item"
+            >
+              <div class="dept-list__info">
+                <span class="dept-list__name">{{ dept.departmentName }}</span>
+                <span class="dept-list__count">{{ dept.count }}</span>
               </div>
-              <span class="dept-count">{{ dept.count }}</span>
+              <div class="dept-list__bar-track">
+                <div
+                  class="dept-list__bar-fill"
+                  [style.width.%]="(dept.count / summary!.totalEmployees) * 100"
+                ></div>
+              </div>
             </div>
-          }
-        </mat-card-content>
-        <mat-card-actions>
-          <button mat-button routerLink="/employees" color="primary">
-            View All Employees
-            <mat-icon>arrow_forward</mat-icon>
-          </button>
-        </mat-card-actions>
-      </mat-card>
-
-      <!-- Employment type breakdown -->
-      <mat-card class="chart-card">
-        <mat-card-header>
-          <mat-card-title>Employment Types</mat-card-title>
-          <mat-card-subtitle>By contract type</mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="type-chips">
-            @for (item of stats?.byEmploymentType; track item.type) {
-              <div class="type-chip-row">
-                <span class="type-label">{{ item.type | titlecase }}</span>
-                <div class="type-bar-wrapper">
-                  <mat-progress-bar
-                    mode="determinate"
-                    [value]="(item.count / (stats?.total ?? 1)) * 100"
-                    color="accent"
-                  ></mat-progress-bar>
-                </div>
-                <span class="type-count">
-                  {{ item.count }}
-                  <span class="type-pct">({{ ((item.count / (stats?.total ?? 1)) * 100) | number:'1.0-0' }}%)</span>
-                </span>
-              </div>
-            }
+            <div *ngIf="summary.departmentBreakdown.length === 0" class="text-muted text-center mt-lg">
+              No department data available.
+            </div>
           </div>
-        </mat-card-content>
-        <mat-card-actions>
-          <button mat-button routerLink="/reports" color="primary">
-            View Reports
-            <mat-icon>arrow_forward</mat-icon>
-          </button>
-        </mat-card-actions>
-      </mat-card>
+        </div>
+      </div>
 
-      <!-- Quick actions -->
-      <mat-card class="quick-actions-card">
-        <mat-card-header>
-          <mat-card-title>Quick Actions</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="quick-actions">
-            <button mat-stroked-button routerLink="/employees/new" class="action-btn">
-              <mat-icon>person_add</mat-icon>
-              <span>Add Employee</span>
-            </button>
-            <button mat-stroked-button routerLink="/employees" class="action-btn">
-              <mat-icon>people</mat-icon>
-              <span>View All</span>
-            </button>
-            <button mat-stroked-button routerLink="/reports" class="action-btn">
-              <mat-icon>bar_chart</mat-icon>
-              <span>Reports</span>
-            </button>
-            <button mat-stroked-button routerLink="/profile" class="action-btn">
-              <mat-icon>account_circle</mat-icon>
-              <span>My Profile</span>
-            </button>
+      <!-- Employment Type Breakdown -->
+      <div class="card">
+        <div class="card__header">
+          <h3 class="card__title">Employment Type</h3>
+        </div>
+        <div class="card__body">
+          <div class="type-grid">
+            <div
+              *ngFor="let item of summary.employmentTypeBreakdown"
+              class="type-tile"
+            >
+              <span class="type-tile__count">{{ item.count }}</span>
+              <span class="type-tile__label">{{ item.type | titlecase | replace:'_':' ' }}</span>
+            </div>
           </div>
-        </mat-card-content>
-      </mat-card>
+        </div>
+        <!-- Quick Links -->
+        <div class="card__footer">
+          <a routerLink="/employees" class="btn btn--secondary btn--sm">
+            View All Employees →
+          </a>
+        </div>
+      </div>
     </div>
-  }
+  </ng-container>
 </div>

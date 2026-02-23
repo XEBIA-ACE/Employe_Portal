@@ -1,27 +1,17 @@
 /**
- * Employee domain models
+ * Employee domain model — the core entity of the Employee Portal.
  */
 
-export type EmployeeStatus = 'active' | 'inactive' | 'on-leave' | 'terminated';
-export type EmploymentType = 'full-time' | 'part-time' | 'contract' | 'intern';
-export type Gender = 'male' | 'female' | 'non-binary' | 'prefer-not-to-say';
-
-export interface Department {
-  id: string;
-  name: string;
-  code: string;
-  managerId?: string;
-  description?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+export type EmploymentStatus = 'active' | 'on_leave' | 'terminated' | 'pending';
+export type EmploymentType   = 'full_time' | 'part_time' | 'contractor' | 'intern';
+export type Gender           = 'male' | 'female' | 'non_binary' | 'prefer_not_to_say';
 
 export interface Address {
   street: string;
   city: string;
   state: string;
-  country: string;
   postalCode: string;
+  country: string;
 }
 
 export interface EmergencyContact {
@@ -33,86 +23,86 @@ export interface EmergencyContact {
 
 export interface Employee {
   id: string;
-  employeeId: string; // Human-readable ID (e.g., EMP-001)
+  employeeId: string;          // Human-readable ID, e.g. EMP-00123
   firstName: string;
   lastName: string;
   email: string;
   phone?: string;
-  dateOfBirth?: string;
-  gender?: Gender;
   avatarUrl?: string;
+  gender?: Gender;
+  dateOfBirth?: string;        // ISO 8601
+  nationality?: string;
 
-  // Employment details
+  // Employment info
   jobTitle: string;
   departmentId: string;
-  department?: Department;
+  departmentName: string;
   managerId?: string;
-  manager?: Pick<Employee, 'id' | 'firstName' | 'lastName' | 'email'>;
+  managerName?: string;
   employmentType: EmploymentType;
-  status: EmployeeStatus;
-  hireDate: string;
-  terminationDate?: string;
+  employmentStatus: EmploymentStatus;
+  startDate: string;           // ISO 8601
+  endDate?: string;
   salary?: number;
   currency?: string;
+  location?: string;
 
   // Contact
   address?: Address;
   emergencyContact?: EmergencyContact;
 
-  // System fields
+  // Skills & metadata
+  skills?: string[];
+  notes?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface EmployeeListItem {
-  id: string;
-  employeeId: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  jobTitle: string;
-  department: string;
-  departmentId: string;
-  status: EmployeeStatus;
-  employmentType: EmploymentType;
-  hireDate: string;
-  avatarUrl?: string;
-}
-
-/** Form model for creating / updating an employee */
-export interface EmployeeFormData {
+/** Used when creating a new employee. */
+export interface EmployeeCreateRequest {
   firstName: string;
   lastName: string;
   email: string;
   phone?: string;
-  dateOfBirth?: string;
-  gender?: Gender;
   jobTitle: string;
   departmentId: string;
   managerId?: string;
   employmentType: EmploymentType;
-  status: EmployeeStatus;
-  hireDate: string;
+  startDate: string;
   salary?: number;
   currency?: string;
+  location?: string;
   address?: Address;
   emergencyContact?: EmergencyContact;
+  skills?: string[];
+  notes?: string;
 }
 
-export interface EmployeeFilter {
+export type EmployeeUpdateRequest = Partial<EmployeeCreateRequest> & {
+  employmentStatus?: EmploymentStatus;
+  endDate?: string;
+};
+
+/** Query params for the employee list endpoint. */
+export interface EmployeeFilters {
   search?: string;
   departmentId?: string;
-  status?: EmployeeStatus;
+  employmentStatus?: EmploymentStatus;
   employmentType?: EmploymentType;
   managerId?: string;
+  location?: string;
+  page?: number;
+  pageSize?: number;
+  sortBy?: keyof Employee;
+  sortDirection?: 'asc' | 'desc';
 }
 
-export interface EmployeeStats {
-  total: number;
-  active: number;
-  inactive: number;
-  onLeave: number;
-  newThisMonth: number;
-  byDepartment: Array<{ department: string; count: number }>;
-  byEmploymentType: Array<{ type: EmploymentType; count: number }>;
+/** Summary stats used on the Dashboard. */
+export interface EmployeeSummary {
+  totalEmployees: number;
+  activeEmployees: number;
+  onLeaveEmployees: number;
+  newHiresThisMonth: number;
+  departmentBreakdown: { departmentName: string; count: number }[];
+  employmentTypeBreakdown: { type: EmploymentType; count: number }[];
 }

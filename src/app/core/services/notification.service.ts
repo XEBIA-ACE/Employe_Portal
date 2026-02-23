@@ -1,47 +1,48 @@
 import { Injectable } from '@angular/core';
-import { MatSnackBar, MatSnackBarConfig } from '@angular/material/snack-bar';
+import { Subject } from 'rxjs';
 
 export type NotificationType = 'success' | 'error' | 'warning' | 'info';
 
+export interface Notification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message?: string;
+  duration?: number;   // ms; 0 = persistent until dismissed
+  dismissible?: boolean;
+}
+
 /**
- * Centralised notification service wrapping Angular Material Snackbar.
- * Provides typed helpers for common notification scenarios.
+ * Application-wide notification service.
+ * Components inject this to emit toasts; the NotificationComponent subscribes.
  */
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
-  private readonly defaultDuration = 4000; // ms
+  private notificationSubject = new Subject<Notification>();
+  notifications$ = this.notificationSubject.asObservable();
 
-  constructor(private snackBar: MatSnackBar) {}
-
-  success(message: string, action = 'Dismiss', duration = this.defaultDuration): void {
-    this.show(message, action, 'success-snack', duration);
+  success(title: string, message?: string, duration = 4000): void {
+    this.emit({ type: 'success', title, message, duration });
   }
 
-  error(message: string, action = 'Dismiss', duration = 6000): void {
-    this.show(message, action, 'error-snack', duration);
+  error(title: string, message?: string, duration = 6000): void {
+    this.emit({ type: 'error', title, message, duration });
   }
 
-  warning(message: string, action = 'Dismiss', duration = this.defaultDuration): void {
-    this.show(message, action, 'warning-snack', duration);
+  warning(title: string, message?: string, duration = 5000): void {
+    this.emit({ type: 'warning', title, message, duration });
   }
 
-  info(message: string, action = 'Dismiss', duration = this.defaultDuration): void {
-    this.show(message, action, '', duration);
+  info(title: string, message?: string, duration = 4000): void {
+    this.emit({ type: 'info', title, message, duration });
   }
 
-  private show(
-    message: string,
-    action: string,
-    panelClass: string,
-    duration: number
-  ): void {
-    const config: MatSnackBarConfig = {
-      duration,
-      horizontalPosition: 'end',
-      verticalPosition: 'top',
-      panelClass: panelClass ? [panelClass] : [],
+  private emit(partial: Omit<Notification, 'id'>): void {
+    const notification: Notification = {
+      id: crypto.randomUUID(),
+      dismissible: true,
+      ...partial,
     };
-
-    this.snackBar.open(message, action, config);
+    this.notificationSubject.next(notification);
   }
 }

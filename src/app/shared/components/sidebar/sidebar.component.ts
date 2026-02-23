@@ -1,46 +1,67 @@
-import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
-import { MatListModule } from '@angular/material/list';
-import { MatIconModule } from '@angular/material/icon';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatTooltipModule } from '@angular/material/tooltip';
+import { Component, Input, OnInit } from '@angular/core';
+import { Router, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
+import { UserRole } from '../../../core/models/user.model';
 
 interface NavItem {
   label: string;
-  route: string;
   icon: string;
-  roles?: string[]; // undefined = accessible by all authenticated users
+  route: string;
+  roles?: UserRole[];
+  badge?: string;
 }
 
 @Component({
   selector: 'app-sidebar',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterModule,
-    MatListModule,
-    MatIconModule,
-    MatDividerModule,
-    MatTooltipModule,
-  ],
   templateUrl: './sidebar.component.html',
   styleUrls: ['./sidebar.component.scss'],
 })
-export class SidebarComponent {
-  protected readonly authService = inject(AuthService);
+export class SidebarComponent implements OnInit {
+  @Input() collapsed = false;
+
+  currentUrl = '';
 
   readonly navItems: NavItem[] = [
-    { label: 'Dashboard', route: '/dashboard', icon: 'dashboard' },
-    { label: 'Employees', route: '/employees', icon: 'people', roles: ['admin', 'hr-manager', 'manager'] },
-    { label: 'Departments', route: '/employees/departments', icon: 'corporate_fare', roles: ['admin', 'hr-manager'] },
-    { label: 'Reports', route: '/reports', icon: 'bar_chart', roles: ['admin', 'hr-manager', 'manager'] },
-    { label: 'My Profile', route: '/profile', icon: 'account_circle' },
+    { label: 'Dashboard',  icon: '📊', route: '/dashboard' },
+    { label: 'Employees',  icon: '👥', route: '/employees' },
+    {
+      label: 'Add Employee',
+      icon: '➕',
+      route: '/employees/new',
+      roles: ['admin', 'hr_manager'],
+    },
+    { label: 'My Profile', icon: '👤', route: '/profile' },
   ];
 
-  isNavItemVisible(item: NavItem): boolean {
-    if (!item.roles?.length) return true;
-    return this.authService.hasRole(...item.roles);
+  constructor(
+    private router: Router,
+    private authService: AuthService,
+  ) {}
+
+  ngOnInit(): void {
+    this.currentUrl = this.router.url;
+    this.router.events
+      .pipe(filter((e) => e instanceof NavigationEnd))
+      .subscribe((e) => {
+        this.currentUrl = (e as NavigationEnd).urlAfterRedirects;
+      });
+  }
+
+  isActive(route: string): boolean {
+    if (route === '/dashboard') {
+      return this.currentUrl === '/dashboard' || this.currentUrl === '/';
+    }
+    return this.currentUrl.startsWith(route);
+  }
+
+  isVisible(item: NavItem): boolean {
+    if (!item.roles || item.roles.length === 0) return true;
+    const role = this.authService.userRole as UserRole;
+    return item.roles.includes(role);
+  }
+
+  logout(): void {
+    this.authService.logout();
   }
 }

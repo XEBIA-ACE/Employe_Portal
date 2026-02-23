@@ -1,52 +1,33 @@
-<nav class="sidebar-nav" aria-label="Main navigation">
-  <!-- User summary -->
-  <div class="sidebar-user">
-    <div class="user-avatar-wrapper">
-      @if (authService.currentUser()?.avatarUrl) {
-        <img
-          [src]="authService.currentUser()!.avatarUrl"
-          [alt]="authService.currentUser()!.firstName"
-          class="user-avatar"
-        />
-      } @else {
-        <div class="user-avatar-placeholder">
-          {{ authService.currentUser()?.firstName?.charAt(0) }}{{ authService.currentUser()?.lastName?.charAt(0) }}
-        </div>
-      }
-    </div>
-    <div class="user-info">
-      <p class="user-name">
-        {{ authService.currentUser()?.firstName }} {{ authService.currentUser()?.lastName }}
-      </p>
-      <span class="user-role">{{ authService.userRole() }}</span>
-    </div>
+<nav class="sidebar" [class.collapsed]="collapsed" role="navigation" aria-label="Main navigation">
+  <!-- Brand -->
+  <div class="sidebar__brand">
+    <div class="brand-mark">EP</div>
+    <span class="brand-label" *ngIf="!collapsed">Employee Portal</span>
   </div>
 
-  <mat-divider></mat-divider>
+  <!-- Navigation Items -->
+  <ul class="sidebar__nav" role="list">
+    <li *ngFor="let item of navItems">
+      <a
+        *ngIf="isVisible(item)"
+        [routerLink]="item.route"
+        class="nav-item"
+        [class.active]="isActive(item.route)"
+        [attr.title]="collapsed ? item.label : null"
+        role="listitem"
+      >
+        <span class="nav-item__icon" aria-hidden="true">{{ item.icon }}</span>
+        <span class="nav-item__label" *ngIf="!collapsed">{{ item.label }}</span>
+        <span class="nav-item__badge" *ngIf="item.badge && !collapsed">{{ item.badge }}</span>
+      </a>
+    </li>
+  </ul>
 
-  <!-- Navigation links -->
-  <mat-nav-list class="nav-list">
-    @for (item of navItems; track item.route) {
-      @if (isNavItemVisible(item)) {
-        <a
-          mat-list-item
-          [routerLink]="item.route"
-          routerLinkActive="active-link"
-          [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }"
-          class="nav-item"
-          [attr.aria-label]="item.label"
-        >
-          <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
-          <span matListItemTitle>{{ item.label }}</span>
-        </a>
-      }
-    }
-  </mat-nav-list>
-
-  <mat-divider></mat-divider>
-
-  <!-- Version footer -->
-  <div class="sidebar-footer">
-    <p class="version-text">Employee Portal v1.0.0</p>
+  <!-- Bottom Actions -->
+  <div class="sidebar__footer">
+    <button class="nav-item nav-item--logout" (click)="logout()" title="Sign out">
+      <span class="nav-item__icon">🚪</span>
+      <span class="nav-item__label" *ngIf="!collapsed">Sign Out</span>
+    </button>
   </div>
 </nav>

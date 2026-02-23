@@ -1,37 +1,30 @@
-<!-- Auth pages: no layout shell -->
-@if (!authService.isAuthenticated()) {
+<!-- Full-page auth layout (login) — no shell -->
+<ng-container *ngIf="isAuthRoute">
   <router-outlet></router-outlet>
-} @else {
-  <!-- Authenticated layout with header + sidebar + content -->
-  <mat-sidenav-container class="app-container" autosize>
+</ng-container>
 
-    <!-- Sidebar -->
-    <mat-sidenav
-      #sidenav
-      [mode]="isMobile ? 'over' : 'side'"
-      [opened]="!isMobile"
-      class="app-sidenav"
-      fixedInViewport="true"
-      [fixedTopGap]="64"
-    >
-      <app-sidebar></app-sidebar>
-    </mat-sidenav>
+<!-- Authenticated app shell -->
+<ng-container *ngIf="!isAuthRoute && isAuthenticated">
+  <!-- Top Header Bar -->
+  <app-header (sidebarToggle)="toggleSidebar()"></app-header>
 
-    <!-- Main content area -->
-    <mat-sidenav-content class="app-content">
-      <!-- Fixed top header -->
-      <app-header (sidenavToggle)="onSidenavToggle()"></app-header>
+  <!-- Sidebar Navigation -->
+  <app-sidebar [collapsed]="sidebarCollapsed"></app-sidebar>
 
-      <!-- Page content -->
-      <main class="main-content">
-        <router-outlet></router-outlet>
-      </main>
+  <!-- Main Content Area -->
+  <main
+    class="main-content"
+    [class.sidebar-collapsed]="sidebarCollapsed"
+    role="main"
+  >
+    <router-outlet></router-outlet>
+  </main>
 
-      <!-- Footer -->
-      <footer class="app-footer">
-        <span>&copy; {{ currentYear }} Employee Portal. All rights reserved.</span>
-      </footer>
-    </mat-sidenav-content>
+  <!-- Global Toast Notifications -->
+  <app-notification></app-notification>
+</ng-container>
 
-  </mat-sidenav-container>
-}
+<!-- Fallback for unauthenticated non-auth routes (guard will redirect) -->
+<ng-container *ngIf="!isAuthRoute && !isAuthenticated">
+  <router-outlet></router-outlet>
+</ng-container>

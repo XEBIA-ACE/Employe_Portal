@@ -1,201 +1,170 @@
-<div class="page-container">
-  @if (isLoading) {
-    <app-loading-spinner message="Loading employee details…"></app-loading-spinner>
-  } @else if (employee) {
+<div class="page-content">
+  <!-- Back Navigation -->
+  <button class="btn btn--secondary btn--sm mb-md" (click)="goBack()">
+    ← Back to Employees
+  </button>
 
-    <!-- Back navigation + actions -->
-    <div class="page-nav">
-      <button mat-icon-button routerLink="/employees" matTooltip="Back to employees">
-        <mat-icon>arrow_back</mat-icon>
-      </button>
-      <span class="breadcrumb">
-        <a routerLink="/employees">Employees</a> /
-        {{ employee.firstName }} {{ employee.lastName }}
-      </span>
-      <span class="flex-1"></span>
-      @if (authService.hasRole('admin', 'hr-manager', 'manager')) {
-        <button mat-stroked-button (click)="onEdit()">
-          <mat-icon>edit</mat-icon> Edit
-        </button>
-      }
-      @if (authService.hasRole('admin', 'hr-manager')) {
-        <button mat-stroked-button color="warn" (click)="onDelete()">
-          <mat-icon>delete</mat-icon> Delete
-        </button>
-      }
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="detail-skeleton">
+    <div class="skeleton" style="height: 200px; border-radius: 12px;"></div>
+    <div class="skeleton" style="height: 300px; border-radius: 12px; margin-top: 24px;"></div>
+  </div>
+
+  <!-- Employee Detail -->
+  <ng-container *ngIf="employee && !isLoading">
+    <!-- Profile Hero Card -->
+    <div class="card hero-card">
+      <div class="hero-card__profile">
+        <div class="avatar avatar--xl">
+          <img *ngIf="employee.avatarUrl" [src]="employee.avatarUrl" [alt]="employee.firstName" />
+          <span *ngIf="!employee.avatarUrl">{{ initials }}</span>
+        </div>
+        <div class="hero-card__info">
+          <h2 class="hero-card__name">
+            {{ employee.firstName }} {{ employee.lastName }}
+          </h2>
+          <p class="hero-card__title">{{ employee.jobTitle }}</p>
+          <p class="hero-card__dept">{{ employee.departmentName }}</p>
+          <div class="hero-card__meta">
+            <span class="badge"
+              [ngClass]="{
+                'badge--success': employee.employmentStatus === 'active',
+                'badge--warning': employee.employmentStatus === 'on_leave',
+                'badge--error':   employee.employmentStatus === 'terminated',
+                'badge--neutral': employee.employmentStatus === 'pending'
+              }">
+              {{ employee.employmentStatus | titlecase | replace:'_':' ' }}
+            </span>
+            <span class="badge badge--neutral">
+              {{ employee.employmentType | titlecase | replace:'_':' ' }}
+            </span>
+            <span class="hero-card__id">{{ employee.employeeId }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="hero-card__actions">
+        <button class="btn btn--primary" (click)="editEmployee()">✏️ Edit Employee</button>
+      </div>
     </div>
 
-    <!-- Profile header -->
-    <mat-card class="profile-header-card">
-      <mat-card-content>
-        <div class="profile-header">
-          <!-- Avatar -->
-          <div class="avatar-wrapper">
-            @if (employee.avatarUrl) {
-              <img [src]="employee.avatarUrl" [alt]="employee.firstName" class="profile-avatar" />
-            } @else {
-              <div class="profile-avatar-initials">{{ getInitials() }}</div>
-            }
-            <span class="status-badge" [class]="employee.status">
-              {{ employee.status | titlecase }}
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn" [class.active]="activeTab === 'overview'" (click)="setTab('overview')">
+        Overview
+      </button>
+      <button class="tab-btn" [class.active]="activeTab === 'contact'" (click)="setTab('contact')">
+        Contact
+      </button>
+    </div>
+
+    <!-- Overview Tab -->
+    <div *ngIf="activeTab === 'overview'" class="detail-grid">
+      <div class="card">
+        <div class="card__header"><h3 class="card__title">Employment Details</h3></div>
+        <div class="card__body">
+          <dl class="detail-list">
+            <div class="detail-list__row">
+              <dt>Employee ID</dt>
+              <dd>{{ employee.employeeId }}</dd>
+            </div>
+            <div class="detail-list__row">
+              <dt>Start Date</dt>
+              <dd>{{ employee.startDate | date:'longDate' }}</dd>
+            </div>
+            <div class="detail-list__row" *ngIf="employee.endDate">
+              <dt>End Date</dt>
+              <dd>{{ employee.endDate | date:'longDate' }}</dd>
+            </div>
+            <div class="detail-list__row">
+              <dt>Manager</dt>
+              <dd>{{ employee.managerName || '—' }}</dd>
+            </div>
+            <div class="detail-list__row" *ngIf="employee.location">
+              <dt>Location</dt>
+              <dd>{{ employee.location }}</dd>
+            </div>
+            <div class="detail-list__row" *ngIf="employee.salary">
+              <dt>Salary</dt>
+              <dd>{{ employee.salary | currency:(employee.currency || 'USD') }}</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card__header"><h3 class="card__title">Skills</h3></div>
+        <div class="card__body">
+          <div class="skills-list" *ngIf="employee.skills && employee.skills.length > 0">
+            <span *ngFor="let skill of employee.skills" class="badge badge--info">
+              {{ skill }}
             </span>
           </div>
-
-          <!-- Basic info -->
-          <div class="profile-info">
-            <h2 class="employee-name">
-              {{ employee.firstName }} {{ employee.lastName }}
-            </h2>
-            <p class="job-title">{{ employee.jobTitle }}</p>
-            <p class="department text-muted">
-              <mat-icon>corporate_fare</mat-icon>
-              {{ employee.department?.name ?? '—' }}
-            </p>
-            <div class="chips-row">
-              <mat-chip>{{ employee.employeeId }}</mat-chip>
-              <mat-chip>{{ employee.employmentType | titlecase }}</mat-chip>
-            </div>
-          </div>
-
-          <!-- Contact quick info -->
-          <div class="profile-contact">
-            <div class="contact-item">
-              <mat-icon>email</mat-icon>
-              <a [href]="'mailto:' + employee.email">{{ employee.email }}</a>
-            </div>
-            @if (employee.phone) {
-              <div class="contact-item">
-                <mat-icon>phone</mat-icon>
-                <a [href]="'tel:' + employee.phone">{{ employee.phone }}</a>
-              </div>
-            }
-            <div class="contact-item">
-              <mat-icon>calendar_today</mat-icon>
-              <span>Hired {{ employee.hireDate | date:'longDate' }}</span>
-            </div>
-            @if (employee.manager) {
-              <div class="contact-item">
-                <mat-icon>manage_accounts</mat-icon>
-                <a [routerLink]="['/employees', employee.manager.id]">
-                  {{ employee.manager.firstName }} {{ employee.manager.lastName }}
-                </a>
-              </div>
-            }
-          </div>
+          <p *ngIf="!employee.skills || employee.skills.length === 0" class="text-muted">
+            No skills listed.
+          </p>
         </div>
-      </mat-card-content>
-    </mat-card>
+      </div>
 
-    <!-- Detail tabs -->
-    <mat-tab-group animationDuration="200ms">
-
-      <!-- Personal info tab -->
-      <mat-tab label="Personal Info">
-        <div class="tab-content">
-          <mat-card>
-            <mat-card-header>
-              <mat-card-title>Personal Information</mat-card-title>
-            </mat-card-header>
-            <mat-card-content>
-              <div class="detail-grid">
-                <div class="detail-item">
-                  <span class="detail-label">Date of Birth</span>
-                  <span class="detail-value">{{ (employee.dateOfBirth | date:'longDate') ?? '—' }}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Gender</span>
-                  <span class="detail-value">{{ employee.gender ?? '—' | titlecase }}</span>
-                </div>
-                <div class="detail-item full-span">
-                  <span class="detail-label">Address</span>
-                  <span class="detail-value">{{ formatAddress() }}</span>
-                </div>
-              </div>
-
-              @if (employee.emergencyContact) {
-                <mat-divider class="section-divider"></mat-divider>
-                <h4>Emergency Contact</h4>
-                <div class="detail-grid">
-                  <div class="detail-item">
-                    <span class="detail-label">Name</span>
-                    <span class="detail-value">{{ employee.emergencyContact.name }}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Relationship</span>
-                    <span class="detail-value">{{ employee.emergencyContact.relationship }}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Phone</span>
-                    <span class="detail-value">{{ employee.emergencyContact.phone }}</span>
-                  </div>
-                  @if (employee.emergencyContact.email) {
-                    <div class="detail-item">
-                      <span class="detail-label">Email</span>
-                      <span class="detail-value">{{ employee.emergencyContact.email }}</span>
-                    </div>
-                  }
-                </div>
-              }
-            </mat-card-content>
-          </mat-card>
+      <div class="card" *ngIf="employee.notes">
+        <div class="card__header"><h3 class="card__title">Notes</h3></div>
+        <div class="card__body">
+          <p>{{ employee.notes }}</p>
         </div>
-      </mat-tab>
+      </div>
+    </div>
 
-      <!-- Employment tab -->
-      <mat-tab label="Employment">
-        <div class="tab-content">
-          <mat-card>
-            <mat-card-header>
-              <mat-card-title>Employment Details</mat-card-title>
-            </mat-card-header>
-            <mat-card-content>
-              <div class="detail-grid">
-                <div class="detail-item">
-                  <span class="detail-label">Employee ID</span>
-                  <span class="detail-value mono">{{ employee.employeeId }}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Job Title</span>
-                  <span class="detail-value">{{ employee.jobTitle }}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Department</span>
-                  <span class="detail-value">{{ employee.department?.name ?? '—' }}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Employment Type</span>
-                  <span class="detail-value">{{ employee.employmentType | titlecase }}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Status</span>
-                  <span class="status-badge" [class]="employee.status">
-                    {{ employee.status | titlecase }}
-                  </span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Hire Date</span>
-                  <span class="detail-value">{{ employee.hireDate | date:'longDate' }}</span>
-                </div>
-                @if (employee.terminationDate) {
-                  <div class="detail-item">
-                    <span class="detail-label">Termination Date</span>
-                    <span class="detail-value">{{ employee.terminationDate | date:'longDate' }}</span>
-                  </div>
-                }
-                @if (authService.hasRole('admin', 'hr-manager') && employee.salary) {
-                  <div class="detail-item">
-                    <span class="detail-label">Salary</span>
-                    <span class="detail-value">
-                      {{ employee.salary | currency:employee.currency ?? 'USD' }}
-                    </span>
-                  </div>
-                }
-              </div>
-            </mat-card-content>
-          </mat-card>
+    <!-- Contact Tab -->
+    <div *ngIf="activeTab === 'contact'" class="detail-grid">
+      <div class="card">
+        <div class="card__header"><h3 class="card__title">Contact Information</h3></div>
+        <div class="card__body">
+          <dl class="detail-list">
+            <div class="detail-list__row">
+              <dt>Email</dt>
+              <dd><a [href]="'mailto:' + employee.email">{{ employee.email }}</a></dd>
+            </div>
+            <div class="detail-list__row" *ngIf="employee.phone">
+              <dt>Phone</dt>
+              <dd>{{ employee.phone }}</dd>
+            </div>
+          </dl>
         </div>
-      </mat-tab>
+      </div>
 
-    </mat-tab-group>
-  }
+      <div class="card" *ngIf="employee.address">
+        <div class="card__header"><h3 class="card__title">Address</h3></div>
+        <div class="card__body">
+          <address>
+            {{ employee.address.street }}<br />
+            {{ employee.address.city }}, {{ employee.address.state }} {{ employee.address.postalCode }}<br />
+            {{ employee.address.country }}
+          </address>
+        </div>
+      </div>
+
+      <div class="card" *ngIf="employee.emergencyContact">
+        <div class="card__header"><h3 class="card__title">Emergency Contact</h3></div>
+        <div class="card__body">
+          <dl class="detail-list">
+            <div class="detail-list__row">
+              <dt>Name</dt>
+              <dd>{{ employee.emergencyContact.name }}</dd>
+            </div>
+            <div class="detail-list__row">
+              <dt>Relationship</dt>
+              <dd>{{ employee.emergencyContact.relationship }}</dd>
+            </div>
+            <div class="detail-list__row">
+              <dt>Phone</dt>
+              <dd>{{ employee.emergencyContact.phone }}</dd>
+            </div>
+            <div class="detail-list__row" *ngIf="employee.emergencyContact.email">
+              <dt>Email</dt>
+              <dd>{{ employee.emergencyContact.email }}</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </ng-container>
 </div>

@@ -1,117 +1,55 @@
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { FormControl } from '@angular/forms';
+import { Router } from '@angular/router';
 import {
-  Component,
-  OnInit,
-  OnDestroy,
-  ViewChild,
-  inject,
-} from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { Router, RouterModule } from '@angular/router';
-import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
-import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
-import { MatTableModule, MatTableDataSource } from '@angular/material/table';
-import { MatPaginatorModule, MatPaginator, PageEvent } from '@angular/material/paginator';
-import { MatSortModule, MatSort, Sort } from '@angular/material/sort';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatDialogModule, MatDialog } from '@angular/material/dialog';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatCardModule } from '@angular/material/card';
+  Subject,
+  debounceTime,
+  distinctUntilChanged,
+  takeUntil,
+  switchMap,
+  catchError,
+  of,
+} from 'rxjs';
 import { EmployeeService } from '../../../core/services/employee.service';
+import { DepartmentService } from '../../../core/services/department.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { AuthService } from '../../../core/services/auth.service';
 import {
-  EmployeeListItem,
-  EmployeeFilter,
-  EmployeeStatus,
-  Department,
+  Employee,
+  EmployeeFilters,
+  EmploymentStatus,
 } from '../../../core/models/employee.model';
-import { PaginationParams } from '../../../core/models/api-response.model';
-import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
-import { ConfirmationDialogComponent } from '../../../shared/components/confirmation-dialog/confirmation-dialog.component';
+import { Department } from '../../../core/models/department.model';
+import { Pagination } from '../../../core/models/api-response.model';
 
 @Component({
   selector: 'app-employee-list',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterModule,
-    FormsModule,
-    ReactiveFormsModule,
-    MatTableModule,
-    MatPaginatorModule,
-    MatSortModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatButtonModule,
-    MatIconModule,
-    MatChipsModule,
-    MatMenuModule,
-    MatDialogModule,
-    MatTooltipModule,
-    MatCardModule,
-    LoadingSpinnerComponent,
-  ],
   templateUrl: './employee-list.component.html',
   styleUrls: ['./employee-list.component.scss'],
 })
 export class EmployeeListComponent implements OnInit, OnDestroy {
-  @ViewChild(MatPaginator) paginator!: MatPaginator;
-  @ViewChild(MatSort) sort!: MatSort;
-
-  private readonly employeeService = inject(EmployeeService);
-  private readonly notificationService = inject(NotificationService);
-  protected readonly authService = inject(AuthService);
-  private readonly router = inject(Router);
-  private readonly dialog = inject(MatDialog);
-  private readonly destroy$ = new Subject<void>();
-
-  displayedColumns = [
-    'avatar',
-    'employeeId',
-    'name',
-    'jobTitle',
-    'department',
-    'status',
-    'employmentType',
-    'hireDate',
-    'actions',
-  ];
-
-  dataSource = new MatTableDataSource<EmployeeListItem>([]);
-  isLoading = true;
-  totalRecords = 0;
+  employees: Employee[] = [];
   departments: Department[] = [];
+  pagination: Pagination | null = null;
+  isLoading = true;
+  deleteInProgress: string | null = null;
 
-  // Filter controls
+  // Filters
   searchControl = new FormControl('');
-  departmentControl = new FormControl('');
-  statusControl = new FormControl<EmployeeStatus | ''>('');
+  filters: EmployeeFilters = { page: 1, pageSize: 20, sortBy: 'lastName', sortDirection: 'asc' };
 
-  statusOptions: { label: string; value: EmployeeStatus }[] = [
-    { label: 'Active', value: 'active' },
-    { label: 'Inactive', value: 'inactive' },
-    { label: 'On Leave', value: 'on-leave' },
-    { label: 'Terminated', value: 'terminated' },
-  ];
+  private destroy$ = new Subject<void>();
 
-  private pagination: PaginationParams = {
-    page: 1,
-    pageSize: 10,
-    sortBy: 'lastName',
-    sortOrder: 'asc',
-  };
+  constructor(
+    private employeeService: EmployeeService,
+    private departmentService: DepartmentService,
+    private notificationService: NotificationService,
+    private router: Router,
+  ) {}
 
   ngOnInit(): void {
     this.loadDepartments();
     this.loadEmployees();
-    this.setupSearchDebounce();
+    this.setupSearch();
   }
 
   ngOnDestroy(): void {
@@ -119,125 +57,136 @@ export class EmployeeListComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  private setupSearchDebounce(): void {
+  // ─── Data Loading ─────────────────────────────────────────────────────────
+
+  loadEmployees(): void {
+    this.isLoading = true;
+    this.employeeService
+      .getEmployees(this.filters)
+      .pipe(
+        catchError(() => {
+          this.notificationService.error('Failed to load employees.');
+          return of(null);
+        }),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((response) => {
+        if (response) {
+          this.employees = response.data;
+          this.pagination = response.pagination;
+        }
+        this.isLoading = false;
+      });
+  }
+
+  loadDepartments(): void {
+    this.departmentService
+      .getDepartments()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (res) => (this.departments = res.data),
+        error: () => {},
+      });
+  }
+
+  private setupSearch(): void {
     this.searchControl.valueChanges
-      .pipe(debounceTime(400), distinctUntilChanged(), takeUntil(this.destroy$))
-      .subscribe(() => {
-        this.pagination.page = 1;
+      .pipe(
+        debounceTime(350),
+        distinctUntilChanged(),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((value) => {
+        this.filters = { ...this.filters, search: value ?? '', page: 1 };
         this.loadEmployees();
       });
   }
 
-  loadEmployees(): void {
-    this.isLoading = true;
-    const filters: EmployeeFilter = {
-      search: this.searchControl.value ?? undefined,
-      departmentId: this.departmentControl.value ?? undefined,
-      status: (this.statusControl.value as EmployeeStatus) || undefined,
-    };
+  // ─── Filtering & Sorting ──────────────────────────────────────────────────
 
-    this.employeeService.getEmployees(this.pagination, filters).subscribe({
-      next: (response) => {
-        this.dataSource.data = response.data;
-        this.totalRecords = response.pagination.total;
-        this.isLoading = false;
+  onDepartmentChange(departmentId: string): void {
+    this.filters = { ...this.filters, departmentId: departmentId || undefined, page: 1 };
+    this.loadEmployees();
+  }
+
+  onStatusChange(status: string): void {
+    this.filters = {
+      ...this.filters,
+      employmentStatus: (status as EmploymentStatus) || undefined,
+      page: 1,
+    };
+    this.loadEmployees();
+  }
+
+  onSort(column: keyof Employee): void {
+    const direction =
+      this.filters.sortBy === column && this.filters.sortDirection === 'asc'
+        ? 'desc'
+        : 'asc';
+    this.filters = { ...this.filters, sortBy: column, sortDirection: direction };
+    this.loadEmployees();
+  }
+
+  onPageChange(page: number): void {
+    this.filters = { ...this.filters, page };
+    this.loadEmployees();
+  }
+
+  // ─── Actions ──────────────────────────────────────────────────────────────
+
+  editEmployee(id: string): void {
+    this.router.navigate(['/employees', id, 'edit']);
+  }
+
+  viewEmployee(id: string): void {
+    this.router.navigate(['/employees', id]);
+  }
+
+  deleteEmployee(employee: Employee): void {
+    if (!confirm(`Delete ${employee.firstName} ${employee.lastName}? This cannot be undone.`)) {
+      return;
+    }
+
+    this.deleteInProgress = employee.id;
+    this.employeeService.deleteEmployee(employee.id).subscribe({
+      next: () => {
+        this.notificationService.success(
+          'Employee deleted',
+          `${employee.firstName} ${employee.lastName} has been removed.`,
+        );
+        this.employees = this.employees.filter((e) => e.id !== employee.id);
+        this.deleteInProgress = null;
       },
       error: () => {
-        this.isLoading = false;
+        this.deleteInProgress = null;
       },
     });
   }
 
-  private loadDepartments(): void {
-    this.employeeService.getDepartments().subscribe({
-      next: (response) => {
-        this.departments = response.data;
-      },
+  exportCsv(): void {
+    this.employeeService.exportCsv(this.filters).subscribe((blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `employees_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
     });
   }
 
-  onPageChange(event: PageEvent): void {
-    this.pagination.page = event.pageIndex + 1;
-    this.pagination.pageSize = event.pageSize;
-    this.loadEmployees();
+  // ─── Helpers ──────────────────────────────────────────────────────────────
+
+  trackByEmployee(_index: number, employee: Employee): string {
+    return employee.id;
   }
 
-  onSortChange(sort: Sort): void {
-    this.pagination.sortBy = sort.active;
-    this.pagination.sortOrder = sort.direction as 'asc' | 'desc';
-    this.pagination.page = 1;
-    this.loadEmployees();
+  getSortIcon(column: string): string {
+    if (this.filters.sortBy !== column) return '⇅';
+    return this.filters.sortDirection === 'asc' ? '↑' : '↓';
   }
 
-  onFilterChange(): void {
-    this.pagination.page = 1;
-    this.loadEmployees();
-  }
-
-  clearFilters(): void {
-    this.searchControl.setValue('');
-    this.departmentControl.setValue('');
-    this.statusControl.setValue('');
-    this.pagination.page = 1;
-    this.loadEmployees();
-  }
-
-  onRowClick(employee: EmployeeListItem): void {
-    this.router.navigate(['/employees', employee.id]);
-  }
-
-  onDeleteEmployee(employee: EmployeeListItem, event: Event): void {
-    event.stopPropagation();
-    const ref = this.dialog.open(ConfirmationDialogComponent, {
-      data: {
-        title: 'Delete Employee',
-        message: `Are you sure you want to delete ${employee.firstName} ${employee.lastName}? This action cannot be undone.`,
-        confirmText: 'Delete',
-        cancelText: 'Cancel',
-        confirmColor: 'warn',
-        icon: 'delete_forever',
-      },
-    });
-
-    ref.afterClosed().subscribe((confirmed) => {
-      if (confirmed) {
-        this.employeeService.deleteEmployee(employee.id).subscribe({
-          next: () => {
-            this.notificationService.success('Employee deleted successfully.');
-            this.loadEmployees();
-          },
-        });
-      }
-    });
-  }
-
-  onExport(format: 'csv' | 'xlsx'): void {
-    const filters: EmployeeFilter = {
-      departmentId: this.departmentControl.value ?? undefined,
-      status: (this.statusControl.value as EmployeeStatus) || undefined,
-    };
-
-    this.employeeService.exportEmployees(format, filters).subscribe({
-      next: (blob) => {
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `employees.${format}`;
-        link.click();
-        URL.revokeObjectURL(url);
-      },
-    });
-  }
-
-  getInitials(employee: EmployeeListItem): string {
-    return `${employee.firstName.charAt(0)}${employee.lastName.charAt(0)}`.toUpperCase();
-  }
-
-  get hasActiveFilters(): boolean {
-    return !!(
-      this.searchControl.value ||
-      this.departmentControl.value ||
-      this.statusControl.value
-    );
+  get pageNumbers(): number[] {
+    if (!this.pagination) return [];
+    return Array.from({ length: this.pagination.totalPages }, (_, i) => i + 1);
   }
 }

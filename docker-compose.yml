@@ -1,64 +1,72 @@
 version: '3.9'
 
-# ── Employee Portal — Local Development Stack ──────────────
-# Services:
-#   frontend  — Angular dev server (with HMR)
-#   backend   — Placeholder REST API (replace with your backend)
-
+# ─── Services ────────────────────────────────────────────────────────────────
 services:
 
-  # ── Angular dev server ────────────────────────────────────
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    container_name: employee_portal_frontend
-    ports:
-      - '4200:4200'
+  # ── Angular Dev Server ──────────────────────────────────────────────────────
+  # Runs ng serve with hot-module reload for local development.
+  employee-portal-dev:
+    image: node:18-alpine
+    container_name: employee-portal-dev
+    working_dir: /app
     volumes:
-      # Mount source for live-reload; exclude node_modules
       - .:/app
-      - /app/node_modules
+      - node_modules_cache:/app/node_modules   # persist node_modules across restarts
+    ports:
+      - "4200:4200"
+    command: sh -c "npm install && npm start -- --host 0.0.0.0 --poll 500"
     environment:
       - NODE_ENV=development
-      - CHOKIDAR_USEPOLLING=true # Required for file-watching in Docker on some OSes
-    depends_on:
-      - backend
-    restart: unless-stopped
     networks:
-      - portal_net
+      - ep-network
+    profiles:
+      - dev
 
-  # ── Backend API placeholder ───────────────────────────────
-  # Replace this with your real backend service / image
-  backend:
-    image: node:20-alpine
-    container_name: employee_portal_backend
-    working_dir: /api
-    command: sh -c "npm install -g json-server && json-server --watch db.json --port 3000 --host 0.0.0.0"
-    ports:
-      - '3000:3000'
-    volumes:
-      - ./mock-api:/api
-    restart: unless-stopped
-    networks:
-      - portal_net
-
-  # ── Production build preview ──────────────────────────────
-  # Run:  docker-compose up frontend-prod
-  frontend-prod:
+  # ── Production (nginx) Build ─────────────────────────────────────────────────
+  # Runs the multi-stage Dockerfile build and serves via nginx.
+  employee-portal:
     build:
       context: .
       dockerfile: Dockerfile
       target: production
-    container_name: employee_portal_prod
+    container_name: employee-portal
     ports:
-      - '8080:80'
-    restart: unless-stopped
+      - "8080:80"
+    environment:
+      - NODE_ENV=production
     networks:
-      - portal_net
+      - ep-network
+    restart: unless-stopped
     profiles:
       - prod
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
+  # ── Mock API Server ──────────────────────────────────────────────────────────
+  # json-server provides a zero-config REST API for local development.
+  # Replace with your real API backend as needed.
+  mock-api:
+    image: vimagick/json-server:latest
+    container_name: ep-mock-api
+    volumes:
+      - ./mock-data/db.json:/data/db.json
+    ports:
+      - "3000:3000"
+    networks:
+      - ep-network
+    profiles:
+      - dev
+    command: json-server --watch /data/db.json --port 3000 --host 0.0.0.0
+
+# ─── Networks ─────────────────────────────────────────────────────────────────
 networks:
-  portal_net:
+  ep-network:
     driver: bridge
+
+# ─── Volumes ──────────────────────────────────────────────────────────────────
+volumes:
+  node_modules_cache:

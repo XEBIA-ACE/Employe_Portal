@@ -1,126 +1,87 @@
-import { Component, OnInit, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
-import { MatCardModule } from '@angular/material/card';
-import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatChipsModule } from '@angular/material/chips';
+import { Component, OnInit } from '@angular/core';
 import { EmployeeService } from '../../core/services/employee.service';
+import { EmployeeSummary } from '../../core/models/employee.model';
 import { AuthService } from '../../core/services/auth.service';
-import { EmployeeStats } from '../../core/models/employee.model';
-import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
-
-interface StatCard {
-  title: string;
-  value: number | string;
-  icon: string;
-  color: string;
-  change?: number; // % change vs last period
-  route?: string;
-}
+import { User } from '../../core/models/user.model';
 
 @Component({
   selector: 'app-dashboard',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterModule,
-    MatCardModule,
-    MatIconModule,
-    MatButtonModule,
-    MatDividerModule,
-    MatProgressBarModule,
-    MatChipsModule,
-    LoadingSpinnerComponent,
-  ],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
 })
 export class DashboardComponent implements OnInit {
-  protected readonly authService = inject(AuthService);
-  private readonly employeeService = inject(EmployeeService);
-
-  stats: EmployeeStats | null = null;
+  currentUser: User | null = null;
+  summary: EmployeeSummary | null = null;
   isLoading = true;
-  statCards: StatCard[] = [];
+  error: string | null = null;
+
+  readonly statCards = [
+    {
+      key: 'totalEmployees' as keyof EmployeeSummary,
+      label: 'Total Employees',
+      icon: '👥',
+      color: '#e3f2fd',
+      iconColor: '#1976d2',
+    },
+    {
+      key: 'activeEmployees' as keyof EmployeeSummary,
+      label: 'Active',
+      icon: '✅',
+      color: '#e8f5e9',
+      iconColor: '#388e3c',
+    },
+    {
+      key: 'onLeaveEmployees' as keyof EmployeeSummary,
+      label: 'On Leave',
+      icon: '🏖️',
+      color: '#fff3e0',
+      iconColor: '#f57c00',
+    },
+    {
+      key: 'newHiresThisMonth' as keyof EmployeeSummary,
+      label: 'New Hires This Month',
+      icon: '🆕',
+      color: '#fce4ec',
+      iconColor: '#c2185b',
+    },
+  ];
+
+  constructor(
+    private employeeService: EmployeeService,
+    private authService: AuthService,
+  ) {}
 
   ngOnInit(): void {
-    this.loadStats();
+    this.currentUser = this.authService.currentUser;
+    this.loadSummary();
   }
 
-  private loadStats(): void {
-    this.employeeService.getEmployeeStats().subscribe({
+  loadSummary(): void {
+    this.isLoading = true;
+    this.error = null;
+
+    this.employeeService.getSummary().subscribe({
       next: (response) => {
-        this.stats = response.data;
-        this.buildStatCards();
+        this.summary = response.data;
         this.isLoading = false;
       },
       error: () => {
+        this.error = 'Failed to load dashboard data. Please try refreshing.';
         this.isLoading = false;
-        // Use mock data for demonstration if API is unavailable
-        this.stats = this.getMockStats();
-        this.buildStatCards();
       },
     });
   }
 
-  private buildStatCards(): void {
-    if (!this.stats) return;
-    this.statCards = [
-      {
-        title: 'Total Employees',
-        value: this.stats.total,
-        icon: 'people',
-        color: '#3f51b5',
-        change: 5,
-        route: '/employees',
-      },
-      {
-        title: 'Active',
-        value: this.stats.active,
-        icon: 'check_circle',
-        color: '#4caf50',
-        route: '/employees',
-      },
-      {
-        title: 'On Leave',
-        value: this.stats.onLeave,
-        icon: 'beach_access',
-        color: '#2196f3',
-      },
-      {
-        title: 'New This Month',
-        value: this.stats.newThisMonth,
-        icon: 'person_add',
-        color: '#ff9800',
-        change: 12,
-      },
-    ];
+  getSummaryValue(key: keyof EmployeeSummary): number {
+    if (!this.summary) return 0;
+    const val = this.summary[key];
+    return typeof val === 'number' ? val : 0;
   }
 
-  private getMockStats(): EmployeeStats {
-    return {
-      total: 248,
-      active: 231,
-      inactive: 8,
-      onLeave: 9,
-      newThisMonth: 14,
-      byDepartment: [
-        { department: 'Engineering', count: 72 },
-        { department: 'Sales', count: 45 },
-        { department: 'Marketing', count: 31 },
-        { department: 'HR', count: 18 },
-        { department: 'Finance', count: 24 },
-        { department: 'Operations', count: 58 },
-      ],
-      byEmploymentType: [
-        { type: 'full-time', count: 190 },
-        { type: 'part-time', count: 32 },
-        { type: 'contract', count: 20 },
-        { type: 'intern', count: 6 },
-      ],
-    };
+  get greeting(): string {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
   }
 }

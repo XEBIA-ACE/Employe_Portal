@@ -1,0 +1,29 @@
+<div class="notification-container" aria-live="polite" aria-atomic="false">
+  <div
+    *ngFor="let notification of notifications; trackBy: trackByNotification"
+    class="notification"
+    [ngClass]="'notification--' + notification.type"
+    role="alert"
+  >
+    <div class="notification__icon">
+      <span *ngIf="notification.type === 'success'">✅</span>
+      <span *ngIf="notification.type === 'error'">❌</span>
+      <span *ngIf="notification.type === 'warning'">⚠️</span>
+      <span *ngIf="notification.type === 'info'">ℹ️</span>
+    </div>
+    <div class="notification__body">
+      <strong class="notification__title">{{ notification.title }}</strong>
+      <p class="notification__message" *ngIf="notification.message">
+        {{ notification.message }}
+      </p>
+    </div>
+    <button
+      *ngIf="notification.dismissible"
+      class="notification__close"
+      (click)="dismiss(notification.id)"
+      aria-label="Dismiss notification"
+    >
+      ×
+    </button>
+  </div>
+</div>

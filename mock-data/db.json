@@ -1,0 +1,154 @@
+{
+  "employees": [
+    {
+      "id": "emp-001",
+      "employeeId": "EMP-00001",
+      "firstName": "Alice",
+      "lastName": "Johnson",
+      "email": "alice.johnson@example.com",
+      "phone": "+1 (555) 100-0001",
+      "jobTitle": "Senior Frontend Engineer",
+      "departmentId": "dept-001",
+      "departmentName": "Engineering",
+      "employmentType": "full_time",
+      "employmentStatus": "active",
+      "startDate": "2020-03-15",
+      "location": "San Francisco, CA",
+      "salary": 140000,
+      "currency": "USD",
+      "skills": ["Angular", "TypeScript", "RxJS", "CSS"],
+      "createdAt": "2020-03-01T00:00:00Z",
+      "updatedAt": "2023-11-01T00:00:00Z"
+    },
+    {
+      "id": "emp-002",
+      "employeeId": "EMP-00002",
+      "firstName": "Bob",
+      "lastName": "Williams",
+      "email": "bob.williams@example.com",
+      "phone": "+1 (555) 100-0002",
+      "jobTitle": "HR Manager",
+      "departmentId": "dept-002",
+      "departmentName": "Human Resources",
+      "employmentType": "full_time",
+      "employmentStatus": "active",
+      "startDate": "2019-07-01",
+      "location": "New York, NY",
+      "salary": 110000,
+      "currency": "USD",
+      "skills": ["Recruitment", "HRIS", "Labor Law"],
+      "createdAt": "2019-06-15T00:00:00Z",
+      "updatedAt": "2023-10-01T00:00:00Z"
+    },
+    {
+      "id": "emp-003",
+      "employeeId": "EMP-00003",
+      "firstName": "Carol",
+      "lastName": "Martinez",
+      "email": "carol.martinez@example.com",
+      "jobTitle": "Product Designer",
+      "departmentId": "dept-003",
+      "departmentName": "Design",
+      "employmentType": "full_time",
+      "employmentStatus": "on_leave",
+      "startDate": "2021-01-10",
+      "location": "Austin, TX",
+      "salary": 115000,
+      "currency": "USD",
+      "skills": ["Figma", "UX Research", "Prototyping"],
+      "createdAt": "2021-01-01T00:00:00Z",
+      "updatedAt": "2023-09-15T00:00:00Z"
+    },
+    {
+      "id": "emp-004",
+      "employeeId": "EMP-00004",
+      "firstName": "David",
+      "lastName": "Chen",
+      "email": "david.chen@example.com",
+      "jobTitle": "DevOps Engineer",
+      "departmentId": "dept-001",
+      "departmentName": "Engineering",
+      "employmentType": "contractor",
+      "employmentStatus": "active",
+      "startDate": "2022-06-01",
+      "location": "Remote",
+      "salary": 95000,
+      "currency": "USD",
+      "skills": ["Docker", "Kubernetes", "AWS", "Terraform"],
+      "createdAt": "2022-05-20T00:00:00Z",
+      "updatedAt": "2023-12-01T00:00:00Z"
+    }
+  ],
+  "departments": [
+    {
+      "id": "dept-001",
+      "name": "Engineering",
+      "code": "ENG",
+      "description": "Software development and platform engineering",
+      "headCount": 45,
+      "isActive": true,
+      "createdAt": "2018-01-01T00:00:00Z",
+      "updatedAt": "2023-01-01T00:00:00Z"
+    },
+    {
+      "id": "dept-002",
+      "name": "Human Resources",
+      "code": "HR",
+      "description": "People operations and talent management",
+      "headCount": 12,
+      "isActive": true,
+      "createdAt": "2018-01-01T00:00:00Z",
+      "updatedAt": "2023-01-01T00:00:00Z"
+    },
+    {
+      "id": "dept-003",
+      "name": "Design",
+      "code": "DES",
+      "description": "UX/UI design and brand",
+      "headCount": 18,
+      "isActive": true,
+      "createdAt": "2018-01-01T00:00:00Z",
+      "updatedAt": "2023-01-01T00:00:00Z"
+    },
+    {
+      "id": "dept-004",
+      "name": "Finance",
+      "code": "FIN",
+      "description": "Financial planning and accounting",
+      "headCount": 10,
+      "isActive": true,
+      "createdAt": "2018-01-01T00:00:00Z",
+      "updatedAt": "2023-01-01T00:00:00Z"
+    }
+  ],
+  "summary": {
+    "totalEmployees": 120,
+    "activeEmployees": 110,
+    "onLeaveEmployees": 5,
+    "newHiresThisMonth": 8,
+    "departmentBreakdown": [
+      { "departmentName": "Engineering", "count": 45 },
+      { "departmentName": "Design", "count": 18 },
+      { "departmentName": "Human Resources", "count": 12 },
+      { "departmentName": "Finance", "count": 10 },
+      { "departmentName": "Marketing", "count": 35 }
+    ],
+    "employmentTypeBreakdown": [
+      { "type": "full_time", "count": 95 },
+      { "type": "part_time", "count": 10 },
+      { "type": "contractor", "count": 12 },
+      { "type": "intern", "count": 3 }
+    ]
+  },
+  "users": [
+    {
+      "id": "user-001",
+      "email": "admin@example.com",
+      "firstName": "System",
+      "lastName": "Admin",
+      "role": "admin",
+      "isActive": true,
+      "lastLoginAt": "2024-01-15T09:00:00Z"
+    }
+  ]
+}

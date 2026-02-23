@@ -1,147 +1,108 @@
-<div class="page-container">
-  <div class="section-header">
-    <h2>My Profile</h2>
-    <p class="text-muted">Manage your account information and security settings</p>
+<div class="page-content">
+  <div class="page-header">
+    <h2 class="page-header__title">My Profile</h2>
   </div>
 
-  <div class="profile-layout">
-    <!-- Profile summary card -->
-    <mat-card class="profile-summary-card">
-      <mat-card-content>
-        <div class="avatar-section">
-          <div class="large-avatar">{{ getInitials() }}</div>
-          <h3>{{ authService.currentUser()?.firstName }} {{ authService.currentUser()?.lastName }}</h3>
-          <p class="role-badge">{{ authService.userRole() }}</p>
-          <p class="email-text text-muted">{{ authService.currentUser()?.email }}</p>
+  <div class="profile-layout" *ngIf="currentUser">
+    <!-- Sidebar Card -->
+    <div class="card profile-card">
+      <div class="profile-card__avatar">
+        <div class="avatar avatar--xl">
+          <img *ngIf="currentUser.avatarUrl" [src]="currentUser.avatarUrl" [alt]="currentUser.firstName" />
+          <span *ngIf="!currentUser.avatarUrl">{{ initials }}</span>
         </div>
-        <mat-divider></mat-divider>
-        <div class="meta-info">
-          <div class="meta-item">
-            <mat-icon>badge</mat-icon>
-            <span>{{ authService.currentUser()?.id ?? '—' }}</span>
-          </div>
-          <div class="meta-item">
-            <mat-icon>calendar_today</mat-icon>
-            <span>Member since {{ authService.currentUser()?.createdAt | date:'mediumDate' }}</span>
-          </div>
+      </div>
+      <h3 class="profile-card__name">
+        {{ currentUser.firstName }} {{ currentUser.lastName }}
+      </h3>
+      <p class="profile-card__role">
+        <span class="badge badge--info">{{ roleLabel }}</span>
+      </p>
+      <p class="profile-card__email">{{ currentUser.email }}</p>
+
+      <div class="profile-nav">
+        <button class="profile-nav__btn" [class.active]="activeSection === 'info'"
+          (click)="activeSection = 'info'">Account Info</button>
+        <button class="profile-nav__btn" [class.active]="activeSection === 'security'"
+          (click)="activeSection = 'security'">Security</button>
+      </div>
+    </div>
+
+    <!-- Content Area -->
+    <div class="profile-content">
+      <!-- Account Info -->
+      <div *ngIf="activeSection === 'info'" class="card">
+        <div class="card__header"><h3 class="card__title">Account Information</h3></div>
+        <div class="card__body">
+          <dl class="detail-list">
+            <div class="detail-list__row">
+              <dt>Full Name</dt>
+              <dd>{{ currentUser.firstName }} {{ currentUser.lastName }}</dd>
+            </div>
+            <div class="detail-list__row">
+              <dt>Email</dt>
+              <dd>{{ currentUser.email }}</dd>
+            </div>
+            <div class="detail-list__row">
+              <dt>Role</dt>
+              <dd>{{ roleLabel }}</dd>
+            </div>
+            <div class="detail-list__row">
+              <dt>Account Status</dt>
+              <dd>
+                <span class="badge" [ngClass]="currentUser.isActive ? 'badge--success' : 'badge--error'">
+                  {{ currentUser.isActive ? 'Active' : 'Inactive' }}
+                </span>
+              </dd>
+            </div>
+            <div class="detail-list__row" *ngIf="currentUser.lastLoginAt">
+              <dt>Last Login</dt>
+              <dd>{{ currentUser.lastLoginAt | date:'medium' }}</dd>
+            </div>
+          </dl>
         </div>
-      </mat-card-content>
-    </mat-card>
+      </div>
 
-    <!-- Settings tabs -->
-    <div class="settings-area">
-      <mat-tab-group animationDuration="200ms">
+      <!-- Security / Password -->
+      <div *ngIf="activeSection === 'security'" class="card">
+        <div class="card__header"><h3 class="card__title">Change Password</h3></div>
+        <div class="card__body">
+          <form [formGroup]="passwordForm" (ngSubmit)="changePassword()" novalidate>
+            <div class="form-group">
+              <label for="currentPassword">Current Password</label>
+              <input id="currentPassword" type="password" class="form-control"
+                formControlName="currentPassword" autocomplete="current-password" />
+              <span class="form-error"
+                *ngIf="passwordForm.get('currentPassword')?.invalid && passwordForm.get('currentPassword')?.touched">
+                Current password is required.
+              </span>
+            </div>
 
-        <!-- Profile settings -->
-        <mat-tab label="Profile">
-          <mat-card class="settings-card">
-            <mat-card-header>
-              <mat-card-title>Personal Information</mat-card-title>
-              <mat-card-subtitle>Update your name and public details</mat-card-subtitle>
-            </mat-card-header>
-            <mat-card-content>
-              <form [formGroup]="profileForm" novalidate>
-                <div class="form-row">
-                  <mat-form-field appearance="outline">
-                    <mat-label>First Name</mat-label>
-                    <input matInput formControlName="firstName" />
-                    @if (profileForm.get('firstName')?.hasError('required') && profileForm.get('firstName')?.touched) {
-                      <mat-error>First name is required</mat-error>
-                    }
-                  </mat-form-field>
-                  <mat-form-field appearance="outline">
-                    <mat-label>Last Name</mat-label>
-                    <input matInput formControlName="lastName" />
-                    @if (profileForm.get('lastName')?.hasError('required') && profileForm.get('lastName')?.touched) {
-                      <mat-error>Last name is required</mat-error>
-                    }
-                  </mat-form-field>
-                </div>
+            <div class="form-group">
+              <label for="newPassword">New Password</label>
+              <input id="newPassword" type="password" class="form-control"
+                formControlName="newPassword" autocomplete="new-password" />
+              <span class="form-error"
+                *ngIf="passwordForm.get('newPassword')?.touched && passwordForm.get('newPassword')?.errors?.['minlength']">
+                Password must be at least 8 characters.
+              </span>
+            </div>
 
-                <!-- Email is read-only -->
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Email Address</mat-label>
-                  <input matInput [value]="authService.currentUser()?.email ?? ''" readonly />
-                  <mat-icon matPrefix>email</mat-icon>
-                  <mat-hint>Contact your administrator to change your email</mat-hint>
-                </mat-form-field>
-              </form>
-            </mat-card-content>
-            <mat-card-actions align="end">
-              <button
-                mat-raised-button
-                color="primary"
-                (click)="onSaveProfile()"
-                [disabled]="isSavingProfile"
-              >
-                @if (isSavingProfile) {
-                  <mat-spinner diameter="20" color="accent"></mat-spinner>
-                  <span>Saving…</span>
-                } @else {
-                  <mat-icon>save</mat-icon>
-                  <span>Save Changes</span>
-                }
-              </button>
-            </mat-card-actions>
-          </mat-card>
-        </mat-tab>
+            <div class="form-group">
+              <label for="confirmPassword">Confirm New Password</label>
+              <input id="confirmPassword" type="password" class="form-control"
+                formControlName="confirmPassword" autocomplete="new-password" />
+              <span class="form-error" *ngIf="passwordForm.errors?.['mismatch'] && passwordForm.get('confirmPassword')?.touched">
+                Passwords do not match.
+              </span>
+            </div>
 
-        <!-- Security tab -->
-        <mat-tab label="Security">
-          <mat-card class="settings-card">
-            <mat-card-header>
-              <mat-card-title>Change Password</mat-card-title>
-              <mat-card-subtitle>Use a strong password with at least 8 characters</mat-card-subtitle>
-            </mat-card-header>
-            <mat-card-content>
-              <form [formGroup]="passwordForm" novalidate>
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Current Password</mat-label>
-                  <input matInput type="password" formControlName="currentPassword" autocomplete="current-password" />
-                  <mat-icon matPrefix>lock</mat-icon>
-                  @if (passwordForm.get('currentPassword')?.hasError('required') && passwordForm.get('currentPassword')?.touched) {
-                    <mat-error>Current password is required</mat-error>
-                  }
-                </mat-form-field>
-
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>New Password</mat-label>
-                  <input matInput type="password" formControlName="newPassword" autocomplete="new-password" />
-                  <mat-icon matPrefix>lock_reset</mat-icon>
-                  @if (passwordForm.get('newPassword')?.hasError('minlength') && passwordForm.get('newPassword')?.touched) {
-                    <mat-error>Minimum 8 characters</mat-error>
-                  }
-                </mat-form-field>
-
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Confirm New Password</mat-label>
-                  <input matInput type="password" formControlName="confirmPassword" autocomplete="new-password" />
-                  <mat-icon matPrefix>verified</mat-icon>
-                  @if (passwordForm.hasError('passwordMismatch') && passwordForm.get('confirmPassword')?.touched) {
-                    <mat-error>Passwords do not match</mat-error>
-                  }
-                </mat-form-field>
-              </form>
-            </mat-card-content>
-            <mat-card-actions align="end">
-              <button
-                mat-raised-button
-                color="primary"
-                (click)="onChangePassword()"
-                [disabled]="isSavingPassword"
-              >
-                @if (isSavingPassword) {
-                  <mat-spinner diameter="20" color="accent"></mat-spinner>
-                  <span>Updating…</span>
-                } @else {
-                  <mat-icon>security</mat-icon>
-                  <span>Change Password</span>
-                }
-              </button>
-            </mat-card-actions>
-          </mat-card>
-        </mat-tab>
-      </mat-tab-group>
+            <button type="submit" class="btn btn--primary" [disabled]="isChangingPassword">
+              {{ isChangingPassword ? 'Saving...' : 'Update Password' }}
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   </div>
 </div>

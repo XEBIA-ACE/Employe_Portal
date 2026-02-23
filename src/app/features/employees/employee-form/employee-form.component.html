@@ -1,250 +1,217 @@
-<div class="page-container">
-  <!-- Page header -->
-  <div class="page-nav">
-    <button mat-icon-button (click)="onCancel()" matTooltip="Go back">
-      <mat-icon>arrow_back</mat-icon>
-    </button>
-    <h2>{{ isEditMode ? 'Edit Employee' : 'Add New Employee' }}</h2>
+<div class="page-content">
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <button class="btn btn--secondary btn--sm mb-md" (click)="cancel()">← Cancel</button>
+      <h2 class="page-header__title">{{ pageTitle }}</h2>
+    </div>
   </div>
 
-  @if (isLoadingEmployee) {
-    <app-loading-spinner message="Loading employee data…"></app-loading-spinner>
-  } @else {
-    <mat-stepper orientation="horizontal" [linear]="true" #stepper>
+  <!-- Loading Skeleton -->
+  <div *ngIf="isLoading" class="skeleton" style="height: 600px; border-radius: 12px;"></div>
 
-      <!-- Step 1: Personal Info -->
-      <mat-step [stepControl]="personalForm" label="Personal Info">
-        <mat-card class="step-card">
-          <mat-card-content>
-            <form [formGroup]="personalForm" novalidate>
-              <div class="form-row">
-                <mat-form-field appearance="outline">
-                  <mat-label>First Name</mat-label>
-                  <input matInput formControlName="firstName" />
-                  @if (personalForm.get('firstName')?.hasError('required') && personalForm.get('firstName')?.touched) {
-                    <mat-error>First name is required</mat-error>
-                  }
-                </mat-form-field>
+  <!-- Form -->
+  <form *ngIf="!isLoading" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+    <div class="form-grid">
 
-                <mat-form-field appearance="outline">
-                  <mat-label>Last Name</mat-label>
-                  <input matInput formControlName="lastName" />
-                  @if (personalForm.get('lastName')?.hasError('required') && personalForm.get('lastName')?.touched) {
-                    <mat-error>Last name is required</mat-error>
-                  }
-                </mat-form-field>
-              </div>
+      <!-- Personal Information Section -->
+      <div class="card">
+        <div class="card__header">
+          <h3 class="card__title">Personal Information</h3>
+        </div>
+        <div class="card__body">
+          <div class="two-col">
+            <!-- First Name -->
+            <div class="form-group">
+              <label for="firstName">First Name *</label>
+              <input id="firstName" type="text" class="form-control"
+                formControlName="firstName" placeholder="Jane"
+                [class.ng-invalid]="isInvalid('firstName')" />
+              <span class="form-error" *ngIf="isInvalid('firstName') && getControl('firstName').errors?.['required']">
+                First name is required.
+              </span>
+            </div>
 
-              <div class="form-row">
-                <mat-form-field appearance="outline">
-                  <mat-label>Email Address</mat-label>
-                  <input matInput type="email" formControlName="email" />
-                  <mat-icon matPrefix>email</mat-icon>
-                  @if (personalForm.get('email')?.hasError('required') && personalForm.get('email')?.touched) {
-                    <mat-error>Email is required</mat-error>
-                  } @else if (personalForm.get('email')?.hasError('email') && personalForm.get('email')?.touched) {
-                    <mat-error>Enter a valid email address</mat-error>
-                  }
-                </mat-form-field>
+            <!-- Last Name -->
+            <div class="form-group">
+              <label for="lastName">Last Name *</label>
+              <input id="lastName" type="text" class="form-control"
+                formControlName="lastName" placeholder="Smith"
+                [class.ng-invalid]="isInvalid('lastName')" />
+              <span class="form-error" *ngIf="isInvalid('lastName') && getControl('lastName').errors?.['required']">
+                Last name is required.
+              </span>
+            </div>
+          </div>
 
-                <mat-form-field appearance="outline">
-                  <mat-label>Phone Number</mat-label>
-                  <input matInput formControlName="phone" type="tel" />
-                  <mat-icon matPrefix>phone</mat-icon>
-                </mat-form-field>
-              </div>
+          <!-- Email -->
+          <div class="form-group">
+            <label for="email">Email Address *</label>
+            <input id="email" type="email" class="form-control"
+              formControlName="email" placeholder="jane.smith@company.com"
+              autocomplete="off"
+              [class.ng-invalid]="isInvalid('email')" />
+            <span class="form-error" *ngIf="isInvalid('email') && getControl('email').errors?.['required']">
+              Email is required.
+            </span>
+            <span class="form-error" *ngIf="isInvalid('email') && getControl('email').errors?.['email']">
+              Please enter a valid email address.
+            </span>
+          </div>
 
-              <div class="form-row">
-                <mat-form-field appearance="outline">
-                  <mat-label>Date of Birth</mat-label>
-                  <input matInput [matDatepicker]="dobPicker" formControlName="dateOfBirth" />
-                  <mat-datepicker-toggle matIconSuffix [for]="dobPicker"></mat-datepicker-toggle>
-                  <mat-datepicker #dobPicker></mat-datepicker>
-                </mat-form-field>
+          <!-- Phone -->
+          <div class="form-group">
+            <label for="phone">Phone Number</label>
+            <input id="phone" type="tel" class="form-control"
+              formControlName="phone" placeholder="+1 (555) 000-0000"
+              [class.ng-invalid]="isInvalid('phone')" />
+            <span class="form-error" *ngIf="isInvalid('phone') && getControl('phone').errors?.['pattern']">
+              Please enter a valid phone number.
+            </span>
+          </div>
+        </div>
+      </div>
 
-                <mat-form-field appearance="outline">
-                  <mat-label>Gender</mat-label>
-                  <mat-select formControlName="gender">
-                    <mat-option value="">Prefer not to say</mat-option>
-                    @for (opt of genderOptions; track opt.value) {
-                      <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
-              </div>
-            </form>
-          </mat-card-content>
-          <mat-card-actions align="end">
-            <button mat-button (click)="onCancel()">Cancel</button>
-            <button mat-raised-button color="primary" matStepperNext>
-              Next <mat-icon>arrow_forward</mat-icon>
-            </button>
-          </mat-card-actions>
-        </mat-card>
-      </mat-step>
+      <!-- Employment Details Section -->
+      <div class="card">
+        <div class="card__header">
+          <h3 class="card__title">Employment Details</h3>
+        </div>
+        <div class="card__body">
+          <!-- Job Title -->
+          <div class="form-group">
+            <label for="jobTitle">Job Title *</label>
+            <input id="jobTitle" type="text" class="form-control"
+              formControlName="jobTitle" placeholder="Senior Engineer"
+              [class.ng-invalid]="isInvalid('jobTitle')" />
+            <span class="form-error" *ngIf="isInvalid('jobTitle') && getControl('jobTitle').errors?.['required']">
+              Job title is required.
+            </span>
+          </div>
 
-      <!-- Step 2: Employment Info -->
-      <mat-step [stepControl]="employmentForm" label="Employment">
-        <mat-card class="step-card">
-          <mat-card-content>
-            <form [formGroup]="employmentForm" novalidate>
-              <div class="form-row">
-                <mat-form-field appearance="outline">
-                  <mat-label>Job Title</mat-label>
-                  <input matInput formControlName="jobTitle" />
-                  @if (employmentForm.get('jobTitle')?.hasError('required') && employmentForm.get('jobTitle')?.touched) {
-                    <mat-error>Job title is required</mat-error>
-                  }
-                </mat-form-field>
+          <!-- Department -->
+          <div class="form-group">
+            <label for="departmentId">Department *</label>
+            <select id="departmentId" class="form-control"
+              formControlName="departmentId"
+              [class.ng-invalid]="isInvalid('departmentId')">
+              <option value="">Select a department</option>
+              <option *ngFor="let dept of departments" [value]="dept.id">
+                {{ dept.name }}
+              </option>
+            </select>
+            <span class="form-error" *ngIf="isInvalid('departmentId') && getControl('departmentId').errors?.['required']">
+              Department is required.
+            </span>
+          </div>
 
-                <mat-form-field appearance="outline">
-                  <mat-label>Department</mat-label>
-                  <mat-select formControlName="departmentId">
-                    @for (dept of departments; track dept.id) {
-                      <mat-option [value]="dept.id">{{ dept.name }}</mat-option>
-                    }
-                  </mat-select>
-                  @if (employmentForm.get('departmentId')?.hasError('required') && employmentForm.get('departmentId')?.touched) {
-                    <mat-error>Department is required</mat-error>
-                  }
-                </mat-form-field>
-              </div>
+          <div class="two-col">
+            <!-- Employment Type -->
+            <div class="form-group">
+              <label for="employmentType">Employment Type *</label>
+              <select id="employmentType" class="form-control" formControlName="employmentType">
+                <option *ngFor="let type of employmentTypes" [value]="type.value">
+                  {{ type.label }}
+                </option>
+              </select>
+            </div>
 
-              <div class="form-row">
-                <mat-form-field appearance="outline">
-                  <mat-label>Employment Type</mat-label>
-                  <mat-select formControlName="employmentType">
-                    @for (type of employmentTypes; track type.value) {
-                      <mat-option [value]="type.value">{{ type.label }}</mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
+            <!-- Employment Status (edit only) -->
+            <div class="form-group" *ngIf="isEditMode">
+              <label for="employmentStatus">Status</label>
+              <select id="employmentStatus" class="form-control" formControlName="employmentStatus">
+                <option *ngFor="let s of employmentStatuses" [value]="s.value">
+                  {{ s.label }}
+                </option>
+              </select>
+            </div>
+          </div>
 
-                <mat-form-field appearance="outline">
-                  <mat-label>Status</mat-label>
-                  <mat-select formControlName="status">
-                    @for (opt of statusOptions; track opt.value) {
-                      <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
-              </div>
+          <div class="two-col">
+            <!-- Start Date -->
+            <div class="form-group">
+              <label for="startDate">Start Date *</label>
+              <input id="startDate" type="date" class="form-control"
+                formControlName="startDate"
+                [class.ng-invalid]="isInvalid('startDate')" />
+              <span class="form-error" *ngIf="isInvalid('startDate') && getControl('startDate').errors?.['required']">
+                Start date is required.
+              </span>
+            </div>
 
-              <div class="form-row">
-                <mat-form-field appearance="outline">
-                  <mat-label>Hire Date</mat-label>
-                  <input matInput [matDatepicker]="hirePicker" formControlName="hireDate" />
-                  <mat-datepicker-toggle matIconSuffix [for]="hirePicker"></mat-datepicker-toggle>
-                  <mat-datepicker #hirePicker></mat-datepicker>
-                  @if (employmentForm.get('hireDate')?.hasError('required') && employmentForm.get('hireDate')?.touched) {
-                    <mat-error>Hire date is required</mat-error>
-                  }
-                </mat-form-field>
+            <!-- End Date (edit mode only) -->
+            <div class="form-group" *ngIf="isEditMode">
+              <label for="endDate">End Date</label>
+              <input id="endDate" type="date" class="form-control" formControlName="endDate" />
+            </div>
+          </div>
 
-                <mat-form-field appearance="outline">
-                  <mat-label>Salary (optional)</mat-label>
-                  <input matInput type="number" formControlName="salary" />
-                  <mat-select matSuffix formControlName="currency" style="width: 70px">
-                    <mat-option value="USD">USD</mat-option>
-                    <mat-option value="EUR">EUR</mat-option>
-                    <mat-option value="GBP">GBP</mat-option>
-                    <mat-option value="INR">INR</mat-option>
-                  </mat-select>
-                </mat-form-field>
-              </div>
-            </form>
-          </mat-card-content>
-          <mat-card-actions align="end">
-            <button mat-button matStepperPrevious>
-              <mat-icon>arrow_back</mat-icon> Back
-            </button>
-            <button mat-raised-button color="primary" matStepperNext>
-              Next <mat-icon>arrow_forward</mat-icon>
-            </button>
-          </mat-card-actions>
-        </mat-card>
-      </mat-step>
+          <!-- Location -->
+          <div class="form-group">
+            <label for="location">Work Location</label>
+            <input id="location" type="text" class="form-control"
+              formControlName="location" placeholder="New York, NY" />
+          </div>
 
-      <!-- Step 3: Contact & Emergency -->
-      <mat-step label="Contact Info">
-        <mat-card class="step-card">
-          <mat-card-content>
-            <form [formGroup]="contactForm" novalidate>
-              <h4>Address (optional)</h4>
-              <div class="form-row">
-                <mat-form-field appearance="outline" class="full-span">
-                  <mat-label>Street Address</mat-label>
-                  <input matInput formControlName="street" />
-                </mat-form-field>
-              </div>
-              <div class="form-row">
-                <mat-form-field appearance="outline">
-                  <mat-label>City</mat-label>
-                  <input matInput formControlName="city" />
-                </mat-form-field>
-                <mat-form-field appearance="outline">
-                  <mat-label>State / Province</mat-label>
-                  <input matInput formControlName="state" />
-                </mat-form-field>
-              </div>
-              <div class="form-row">
-                <mat-form-field appearance="outline">
-                  <mat-label>Country</mat-label>
-                  <input matInput formControlName="country" />
-                </mat-form-field>
-                <mat-form-field appearance="outline">
-                  <mat-label>Postal Code</mat-label>
-                  <input matInput formControlName="postalCode" />
-                </mat-form-field>
-              </div>
+          <div class="two-col">
+            <!-- Salary -->
+            <div class="form-group">
+              <label for="salary">Annual Salary</label>
+              <input id="salary" type="number" class="form-control"
+                formControlName="salary" placeholder="75000" min="0" />
+            </div>
 
-              <mat-divider class="section-divider"></mat-divider>
-              <h4>Emergency Contact (optional)</h4>
+            <!-- Currency -->
+            <div class="form-group">
+              <label for="currency">Currency</label>
+              <select id="currency" class="form-control" formControlName="currency">
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="GBP">GBP</option>
+                <option value="CAD">CAD</option>
+                <option value="AUD">AUD</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
 
-              <div class="form-row">
-                <mat-form-field appearance="outline">
-                  <mat-label>Contact Name</mat-label>
-                  <input matInput formControlName="ecName" />
-                </mat-form-field>
-                <mat-form-field appearance="outline">
-                  <mat-label>Relationship</mat-label>
-                  <input matInput formControlName="ecRelationship" />
-                </mat-form-field>
-              </div>
-              <div class="form-row">
-                <mat-form-field appearance="outline">
-                  <mat-label>Phone</mat-label>
-                  <input matInput formControlName="ecPhone" type="tel" />
-                </mat-form-field>
-                <mat-form-field appearance="outline">
-                  <mat-label>Email</mat-label>
-                  <input matInput formControlName="ecEmail" type="email" />
-                </mat-form-field>
-              </div>
-            </form>
-          </mat-card-content>
-          <mat-card-actions align="end">
-            <button mat-button matStepperPrevious>
-              <mat-icon>arrow_back</mat-icon> Back
-            </button>
-            <button
-              mat-raised-button
-              color="primary"
-              (click)="onSubmit()"
-              [disabled]="isLoading"
-            >
-              @if (isLoading) {
-                <mat-spinner diameter="20" color="accent"></mat-spinner>
-                <span>{{ isEditMode ? 'Saving…' : 'Creating…' }}</span>
-              } @else {
-                <mat-icon>{{ isEditMode ? 'save' : 'person_add' }}</mat-icon>
-                <span>{{ isEditMode ? 'Save Changes' : 'Create Employee' }}</span>
-              }
-            </button>
-          </mat-card-actions>
-        </mat-card>
-      </mat-step>
+      <!-- Additional Info Section -->
+      <div class="card">
+        <div class="card__header">
+          <h3 class="card__title">Additional Information</h3>
+        </div>
+        <div class="card__body">
+          <!-- Skills -->
+          <div class="form-group">
+            <label for="skillsInput">Skills</label>
+            <input id="skillsInput" type="text" class="form-control"
+              formControlName="skillsInput"
+              placeholder="Angular, TypeScript, RxJS (comma-separated)" />
+            <p class="form-hint">Enter skills separated by commas.</p>
+          </div>
 
-    </mat-stepper>
-  }
+          <!-- Notes -->
+          <div class="form-group">
+            <label for="notes">Notes</label>
+            <textarea id="notes" class="form-control" formControlName="notes"
+              rows="4" placeholder="Any additional notes..."
+              [class.ng-invalid]="isInvalid('notes')"></textarea>
+            <span class="form-error" *ngIf="isInvalid('notes') && getControl('notes').errors?.['maxlength']">
+              Notes cannot exceed 2000 characters.
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Form Actions -->
+    <div class="form-actions">
+      <button type="button" class="btn btn--secondary" (click)="cancel()">Cancel</button>
+      <button type="submit" class="btn btn--primary" [disabled]="isSubmitting">
+        <span *ngIf="isSubmitting" class="spinner"></span>
+        {{ isSubmitting ? 'Saving...' : (isEditMode ? 'Save Changes' : 'Create Employee') }}
+      </button>
+    </div>
+  </form>
 </div>

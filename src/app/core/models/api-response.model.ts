@@ -1,47 +1,41 @@
 /**
- * Shared API response wrapper models
+ * Standardised API response envelope models.
+ * Every REST response from the backend follows these shapes.
  */
 
 export interface ApiResponse<T> {
   data: T;
   message?: string;
-  success: boolean;
   timestamp: string;
 }
 
 export interface PaginatedResponse<T> {
   data: T[];
   pagination: Pagination;
-  success: boolean;
+  message?: string;
   timestamp: string;
 }
 
 export interface Pagination {
   page: number;
   pageSize: number;
-  total: number;
+  totalItems: number;
   totalPages: number;
-  hasNext: boolean;
-  hasPrevious: boolean;
-}
-
-export interface PaginationParams {
-  page: number;
-  pageSize: number;
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
 }
 
 export interface ApiError {
-  code: string;
-  message: string;
-  details?: Record<string, string[]>; // field-level validation errors
+  statusCode: number;
+  error: string;
+  message: string | string[];
   timestamp: string;
-  path?: string;
+  path: string;
 }
 
+/** Generic select option used for dropdowns. */
 export interface SelectOption<T = string> {
-  label: string;
   value: T;
+  label: string;
   disabled?: boolean;
 }

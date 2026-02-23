@@ -1,214 +1,199 @@
-<div class="page-container">
-  <!-- Page header -->
-  <div class="section-header">
+<div class="page-content">
+  <!-- Page Header -->
+  <div class="page-header">
     <div>
-      <h2>Employees</h2>
-      <p class="text-muted">Manage your organisation's workforce</p>
+      <h2 class="page-header__title">Employees</h2>
+      <p class="page-header__subtitle" *ngIf="pagination">
+        {{ pagination.totalItems | number }} employees total
+      </p>
     </div>
-    <div class="header-actions">
-      <!-- Export menu -->
-      <button mat-stroked-button [matMenuTriggerFor]="exportMenu">
-        <mat-icon>download</mat-icon>
-        Export
+    <div class="page-header__actions">
+      <button class="btn btn--secondary" (click)="exportCsv()">
+        ↓ Export CSV
       </button>
-      <mat-menu #exportMenu="matMenu">
-        <button mat-menu-item (click)="onExport('csv')">
-          <mat-icon>table_view</mat-icon> Export as CSV
-        </button>
-        <button mat-menu-item (click)="onExport('xlsx')">
-          <mat-icon>grid_on</mat-icon> Export as Excel
-        </button>
-      </mat-menu>
-
-      @if (authService.hasRole('admin', 'hr-manager')) {
-        <button mat-raised-button color="primary" routerLink="/employees/new">
-          <mat-icon>person_add</mat-icon>
-          Add Employee
-        </button>
-      }
+      <a routerLink="/employees/new" class="btn btn--primary">
+        + Add Employee
+      </a>
     </div>
   </div>
 
-  <!-- Filters -->
-  <mat-card class="filter-card">
-    <mat-card-content>
-      <div class="filters-row">
-        <!-- Search -->
-        <mat-form-field appearance="outline" class="search-field">
-          <mat-label>Search employees</mat-label>
-          <input matInput [formControl]="searchControl" placeholder="Name, email, ID…" />
-          <mat-icon matPrefix>search</mat-icon>
-          @if (searchControl.value) {
-            <button mat-icon-button matSuffix (click)="searchControl.setValue('')">
-              <mat-icon>clear</mat-icon>
-            </button>
-          }
-        </mat-form-field>
+  <!-- Filters Bar -->
+  <div class="card filters-bar">
+    <input
+      type="search"
+      class="form-control"
+      placeholder="Search by name, email, job title..."
+      [formControl]="searchControl"
+    />
 
-        <!-- Department filter -->
-        <mat-form-field appearance="outline">
-          <mat-label>Department</mat-label>
-          <mat-select [formControl]="departmentControl" (selectionChange)="onFilterChange()">
-            <mat-option value="">All departments</mat-option>
-            @for (dept of departments; track dept.id) {
-              <mat-option [value]="dept.id">{{ dept.name }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
+    <select
+      class="form-control"
+      (change)="onDepartmentChange($any($event.target).value)"
+    >
+      <option value="">All Departments</option>
+      <option *ngFor="let dept of departments" [value]="dept.id">
+        {{ dept.name }}
+      </option>
+    </select>
 
-        <!-- Status filter -->
-        <mat-form-field appearance="outline">
-          <mat-label>Status</mat-label>
-          <mat-select [formControl]="statusControl" (selectionChange)="onFilterChange()">
-            <mat-option value="">All statuses</mat-option>
-            @for (opt of statusOptions; track opt.value) {
-              <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
+    <select
+      class="form-control"
+      (change)="onStatusChange($any($event.target).value)"
+    >
+      <option value="">All Statuses</option>
+      <option value="active">Active</option>
+      <option value="on_leave">On Leave</option>
+      <option value="terminated">Terminated</option>
+      <option value="pending">Pending</option>
+    </select>
+  </div>
 
-        @if (hasActiveFilters) {
-          <button mat-icon-button matTooltip="Clear filters" (click)="clearFilters()">
-            <mat-icon>filter_list_off</mat-icon>
-          </button>
-        }
-      </div>
-    </mat-card-content>
-  </mat-card>
+  <!-- Loading Skeleton -->
+  <div *ngIf="isLoading" class="table-container">
+    <table class="table">
+      <tbody>
+        <tr *ngFor="let _ of [1,2,3,4,5,6,7,8]">
+          <td><div class="skeleton" style="height:32px; width:32px; border-radius:50%;"></div></td>
+          <td><div class="skeleton" style="height:16px; width:160px;"></div></td>
+          <td><div class="skeleton" style="height:16px; width:120px;"></div></td>
+          <td><div class="skeleton" style="height:16px; width:100px;"></div></td>
+          <td><div class="skeleton" style="height:22px; width:70px; border-radius:999px;"></div></td>
+          <td><div class="skeleton" style="height:16px; width:80px;"></div></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
-  <!-- Data table -->
-  <div class="table-container">
-    @if (isLoading) {
-      <app-loading-spinner message="Loading employees…"></app-loading-spinner>
-    } @else {
-      <table
-        mat-table
-        [dataSource]="dataSource"
-        matSort
-        (matSortChange)="onSortChange($event)"
-        class="employees-table"
-        aria-label="Employees table"
-      >
-        <!-- Avatar column -->
-        <ng-container matColumnDef="avatar">
-          <th mat-header-cell *matHeaderCellDef></th>
-          <td mat-cell *matCellDef="let employee">
-            @if (employee.avatarUrl) {
-              <img [src]="employee.avatarUrl" [alt]="employee.firstName" class="table-avatar" />
-            } @else {
-              <div class="table-avatar-initials">{{ getInitials(employee) }}</div>
-            }
-          </td>
-        </ng-container>
+  <!-- Employee Table -->
+  <div *ngIf="!isLoading" class="table-container">
+    <!-- Empty State -->
+    <div *ngIf="employees.length === 0" class="empty-state">
+      <div class="empty-state__icon">👤</div>
+      <h3 class="empty-state__title">No employees found</h3>
+      <p class="empty-state__message">
+        Try adjusting your search or filters, or add a new employee.
+      </p>
+      <a routerLink="/employees/new" class="btn btn--primary">Add First Employee</a>
+    </div>
 
-        <!-- Employee ID -->
-        <ng-container matColumnDef="employeeId">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>ID</th>
-          <td mat-cell *matCellDef="let employee">
-            <span class="emp-id">{{ employee.employeeId }}</span>
-          </td>
-        </ng-container>
-
-        <!-- Name -->
-        <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header="lastName">Name</th>
-          <td mat-cell *matCellDef="let employee">
-            <div class="employee-name">
-              {{ employee.firstName }} {{ employee.lastName }}
+    <!-- Table -->
+    <table *ngIf="employees.length > 0" class="table">
+      <thead>
+        <tr>
+          <th>Avatar</th>
+          <th class="sortable" (click)="onSort('lastName')">
+            Name {{ getSortIcon('lastName') }}
+          </th>
+          <th class="sortable" (click)="onSort('jobTitle')">
+            Job Title {{ getSortIcon('jobTitle') }}
+          </th>
+          <th class="sortable" (click)="onSort('departmentName')">
+            Department {{ getSortIcon('departmentName') }}
+          </th>
+          <th>Status</th>
+          <th class="sortable" (click)="onSort('startDate')">
+            Start Date {{ getSortIcon('startDate') }}
+          </th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          *ngFor="let emp of employees; trackBy: trackByEmployee"
+          class="employee-row"
+          (click)="viewEmployee(emp.id)"
+        >
+          <!-- Avatar -->
+          <td>
+            <div class="avatar avatar--sm">
+              <img
+                *ngIf="emp.avatarUrl"
+                [src]="emp.avatarUrl"
+                [alt]="emp.firstName + ' ' + emp.lastName"
+                class="avatar-img"
+              />
+              <span *ngIf="!emp.avatarUrl">
+                {{ emp.firstName[0] }}{{ emp.lastName[0] }}
+              </span>
             </div>
-            <div class="employee-email text-muted">{{ employee.email }}</div>
           </td>
-        </ng-container>
 
-        <!-- Job title -->
-        <ng-container matColumnDef="jobTitle">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Job Title</th>
-          <td mat-cell *matCellDef="let employee">{{ employee.jobTitle }}</td>
-        </ng-container>
+          <!-- Name + Email -->
+          <td>
+            <div class="employee-name">{{ emp.firstName }} {{ emp.lastName }}</div>
+            <div class="employee-email">{{ emp.email }}</div>
+          </td>
 
-        <!-- Department -->
-        <ng-container matColumnDef="department">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Department</th>
-          <td mat-cell *matCellDef="let employee">{{ employee.department }}</td>
-        </ng-container>
+          <!-- Job Title -->
+          <td>{{ emp.jobTitle }}</td>
 
-        <!-- Status -->
-        <ng-container matColumnDef="status">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
-          <td mat-cell *matCellDef="let employee">
-            <span class="status-badge" [class]="employee.status">
-              {{ employee.status | titlecase }}
+          <!-- Department -->
+          <td>{{ emp.departmentName }}</td>
+
+          <!-- Status Badge -->
+          <td>
+            <span
+              class="badge"
+              [ngClass]="{
+                'badge--success': emp.employmentStatus === 'active',
+                'badge--warning': emp.employmentStatus === 'on_leave',
+                'badge--error':   emp.employmentStatus === 'terminated',
+                'badge--neutral': emp.employmentStatus === 'pending'
+              }"
+            >
+              {{ emp.employmentStatus | titlecase | replace:'_':' ' }}
             </span>
           </td>
-        </ng-container>
 
-        <!-- Employment type -->
-        <ng-container matColumnDef="employmentType">
-          <th mat-header-cell *matHeaderCellDef>Type</th>
-          <td mat-cell *matCellDef="let employee">{{ employee.employmentType | titlecase }}</td>
-        </ng-container>
+          <!-- Start Date -->
+          <td>{{ emp.startDate | date:'mediumDate' }}</td>
 
-        <!-- Hire date -->
-        <ng-container matColumnDef="hireDate">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Hire Date</th>
-          <td mat-cell *matCellDef="let employee">
-            {{ employee.hireDate | date:'mediumDate' }}
-          </td>
-        </ng-container>
-
-        <!-- Actions -->
-        <ng-container matColumnDef="actions">
-          <th mat-header-cell *matHeaderCellDef></th>
-          <td mat-cell *matCellDef="let employee" (click)="$event.stopPropagation()">
-            <button mat-icon-button [matMenuTriggerFor]="rowMenu" matTooltip="Actions">
-              <mat-icon>more_vert</mat-icon>
-            </button>
-            <mat-menu #rowMenu="matMenu">
-              <button mat-menu-item [routerLink]="['/employees', employee.id]">
-                <mat-icon>visibility</mat-icon> View
-              </button>
-              @if (authService.hasRole('admin', 'hr-manager', 'manager')) {
-                <button mat-menu-item [routerLink]="['/employees', employee.id, 'edit']">
-                  <mat-icon>edit</mat-icon> Edit
-                </button>
-              }
-              @if (authService.hasRole('admin', 'hr-manager')) {
-                <mat-divider></mat-divider>
-                <button mat-menu-item class="delete-item" (click)="onDeleteEmployee(employee, $event)">
-                  <mat-icon>delete</mat-icon> Delete
-                </button>
-              }
-            </mat-menu>
-          </td>
-        </ng-container>
-
-        <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
-        <tr
-          mat-row
-          *matRowDef="let row; columns: displayedColumns"
-          (click)="onRowClick(row)"
-          class="employee-row"
-        ></tr>
-
-        <!-- Empty state -->
-        <tr class="mat-row" *matNoDataRow>
-          <td class="mat-cell empty-state" [attr.colspan]="displayedColumns.length">
-            <mat-icon>search_off</mat-icon>
-            <p>No employees found</p>
-            @if (hasActiveFilters) {
-              <button mat-button (click)="clearFilters()">Clear filters</button>
-            }
+          <!-- Actions (stop propagation to avoid row click) -->
+          <td (click)="$event.stopPropagation()">
+            <div class="actions-cell">
+              <button
+                class="btn btn--icon"
+                title="View"
+                (click)="viewEmployee(emp.id)"
+              >👁️</button>
+              <button
+                class="btn btn--icon"
+                title="Edit"
+                (click)="editEmployee(emp.id)"
+              >✏️</button>
+              <button
+                class="btn btn--icon"
+                title="Delete"
+                [disabled]="deleteInProgress === emp.id"
+                (click)="deleteEmployee(emp)"
+              >🗑️</button>
+            </div>
           </td>
         </tr>
-      </table>
+      </tbody>
+    </table>
 
-      <mat-paginator
-        [length]="totalRecords"
-        [pageSize]="10"
-        [pageSizeOptions]="[10, 25, 50, 100]"
-        (page)="onPageChange($event)"
-        aria-label="Employees pagination"
-      ></mat-paginator>
-    }
+    <!-- Pagination -->
+    <div *ngIf="pagination && pagination.totalPages > 1" class="pagination">
+      <button
+        class="btn btn--secondary btn--sm"
+        [disabled]="!pagination.hasPreviousPage"
+        (click)="onPageChange(filters.page! - 1)"
+      >
+        ← Previous
+      </button>
+
+      <span class="pagination__info">
+        Page {{ pagination.page }} of {{ pagination.totalPages }}
+      </span>
+
+      <button
+        class="btn btn--secondary btn--sm"
+        [disabled]="!pagination.hasNextPage"
+        (click)="onPageChange(filters.page! + 1)"
+      >
+        Next →
+      </button>
+    </div>
   </div>
 </div>

@@ -1,51 +1,44 @@
-import { inject } from '@angular/core';
-import { CanActivateFn, Router, ActivatedRouteSnapshot } from '@angular/router';
+import { Injectable } from '@angular/core';
+import {
+  CanActivate,
+  CanActivateChild,
+  ActivatedRouteSnapshot,
+  RouterStateSnapshot,
+  Router,
+  UrlTree,
+} from '@angular/router';
+import { Observable } from 'rxjs';
 import { AuthService } from '../services/auth.service';
-import { NotificationService } from '../services/notification.service';
-import { UserRole } from '../models/user.model';
 
 /**
- * Route guard: redirects unauthenticated users to the login page.
- * Optionally checks if the current user has one of the required roles
- * (specified via route data: `{ roles: ['admin', 'hr-manager'] }`).
+ * Route guard that redirects unauthenticated users to the login page.
+ * Preserves the attempted URL so users are redirected back after login.
  */
-export const authGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
-  const authService = inject(AuthService);
-  const router = inject(Router);
-  const notification = inject(NotificationService);
+@Injectable({ providedIn: 'root' })
+export class AuthGuard implements CanActivate, CanActivateChild {
+  constructor(private authService: AuthService, private router: Router) {}
 
-  if (!authService.isAuthenticated()) {
-    router.navigate(['/auth/login'], {
-      queryParams: { returnUrl: router.url },
-    });
-    return false;
+  canActivate(
+    route: ActivatedRouteSnapshot,
+    state: RouterStateSnapshot,
+  ): Observable<boolean | UrlTree> | Promise<boolean | UrlTree> | boolean | UrlTree {
+    return this.checkAuth(state.url);
   }
 
-  // Role-based access control
-  const requiredRoles = route.data?.['roles'] as UserRole[] | undefined;
-  if (requiredRoles?.length) {
-    const hasAccess = authService.hasRole(...requiredRoles);
-    if (!hasAccess) {
-      notification.error('You do not have permission to access this page.');
-      router.navigate(['/dashboard']);
-      return false;
+  canActivateChild(
+    childRoute: ActivatedRouteSnapshot,
+    state: RouterStateSnapshot,
+  ): Observable<boolean | UrlTree> | Promise<boolean | UrlTree> | boolean | UrlTree {
+    return this.checkAuth(state.url);
+  }
+
+  private checkAuth(url: string): boolean | UrlTree {
+    if (this.authService.isAuthenticated) {
+      return true;
     }
+    // Preserve the URL the user tried to reach for post-login redirect
+    return this.router.createUrlTree(['/auth/login'], {
+      queryParams: { returnUrl: url },
+    });
   }
-
-  return true;
-};
-
-/**
- * Route guard: redirects already-authenticated users away from auth pages
- * (e.g., login) to the dashboard.
- */
-export const guestGuard: CanActivateFn = () => {
-  const authService = inject(AuthService);
-  const router = inject(Router);
-
-  if (authService.isAuthenticated()) {
-    router.navigate(['/dashboard']);
-    return false;
-  }
-  return true;
-};
+}

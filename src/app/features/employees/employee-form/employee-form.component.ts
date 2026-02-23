@@ -1,235 +1,214 @@
-import { Component, OnInit, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { Component, OnInit } from '@angular/core';
 import {
   FormBuilder,
   FormGroup,
   Validators,
-  ReactiveFormsModule,
+  AbstractControl,
 } from '@angular/forms';
-import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatNativeDateModule } from '@angular/material/core';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatStepperModule } from '@angular/material/stepper';
+import { ActivatedRoute, Router } from '@angular/router';
+import { finalize } from 'rxjs';
 import { EmployeeService } from '../../../core/services/employee.service';
+import { DepartmentService } from '../../../core/services/department.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { Department, EmployeeStatus, EmploymentType, Gender } from '../../../core/models/employee.model';
-import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
+import { Department } from '../../../core/models/department.model';
+import { Employee } from '../../../core/models/employee.model';
 
 @Component({
   selector: 'app-employee-form',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterModule,
-    ReactiveFormsModule,
-    MatCardModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatButtonModule,
-    MatIconModule,
-    MatDatepickerModule,
-    MatNativeDateModule,
-    MatDividerModule,
-    MatProgressSpinnerModule,
-    MatStepperModule,
-    LoadingSpinnerComponent,
-  ],
   templateUrl: './employee-form.component.html',
   styleUrls: ['./employee-form.component.scss'],
 })
 export class EmployeeFormComponent implements OnInit {
-  private readonly fb = inject(FormBuilder);
-  private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
-  private readonly employeeService = inject(EmployeeService);
-  private readonly notification = inject(NotificationService);
-
+  form!: FormGroup;
   isEditMode = false;
   employeeId: string | null = null;
-  isLoading = false;
-  isLoadingEmployee = false;
+  employee: Employee | null = null;
   departments: Department[] = [];
+  isLoading = false;
+  isSubmitting = false;
 
-  statusOptions: { label: string; value: EmployeeStatus }[] = [
-    { label: 'Active', value: 'active' },
-    { label: 'Inactive', value: 'inactive' },
-    { label: 'On Leave', value: 'on-leave' },
-    { label: 'Terminated', value: 'terminated' },
+  readonly employmentTypes = [
+    { value: 'full_time',   label: 'Full Time' },
+    { value: 'part_time',   label: 'Part Time' },
+    { value: 'contractor',  label: 'Contractor' },
+    { value: 'intern',      label: 'Intern' },
   ];
 
-  employmentTypes: { label: string; value: EmploymentType }[] = [
-    { label: 'Full-time', value: 'full-time' },
-    { label: 'Part-time', value: 'part-time' },
-    { label: 'Contract', value: 'contract' },
-    { label: 'Intern', value: 'intern' },
+  readonly employmentStatuses = [
+    { value: 'active',     label: 'Active' },
+    { value: 'on_leave',   label: 'On Leave' },
+    { value: 'terminated', label: 'Terminated' },
+    { value: 'pending',    label: 'Pending' },
   ];
 
-  genderOptions: { label: string; value: Gender }[] = [
-    { label: 'Male', value: 'male' },
-    { label: 'Female', value: 'female' },
-    { label: 'Non-binary', value: 'non-binary' },
-    { label: 'Prefer not to say', value: 'prefer-not-to-say' },
-  ];
-
-  // Step 1: Personal info
-  personalForm: FormGroup = this.fb.group({
-    firstName: ['', [Validators.required, Validators.minLength(2)]],
-    lastName: ['', [Validators.required, Validators.minLength(2)]],
-    email: ['', [Validators.required, Validators.email]],
-    phone: [''],
-    dateOfBirth: [''],
-    gender: [''],
-  });
-
-  // Step 2: Employment info
-  employmentForm: FormGroup = this.fb.group({
-    jobTitle: ['', Validators.required],
-    departmentId: ['', Validators.required],
-    managerId: [''],
-    employmentType: ['full-time' as EmploymentType, Validators.required],
-    status: ['active' as EmployeeStatus, Validators.required],
-    hireDate: ['', Validators.required],
-    salary: [null],
-    currency: ['USD'],
-  });
-
-  // Step 3: Address & emergency contact
-  contactForm: FormGroup = this.fb.group({
-    street: [''],
-    city: [''],
-    state: [''],
-    country: [''],
-    postalCode: [''],
-    ecName: [''],
-    ecRelationship: [''],
-    ecPhone: [''],
-    ecEmail: [''],
-  });
+  constructor(
+    private fb: FormBuilder,
+    private route: ActivatedRoute,
+    private router: Router,
+    private employeeService: EmployeeService,
+    private departmentService: DepartmentService,
+    private notifications: NotificationService,
+  ) {}
 
   ngOnInit(): void {
     this.employeeId = this.route.snapshot.paramMap.get('id');
     this.isEditMode = !!this.employeeId;
+
+    this.buildForm();
     this.loadDepartments();
 
-    if (this.isEditMode) {
-      this.loadEmployee();
+    if (this.isEditMode && this.employeeId) {
+      this.loadEmployee(this.employeeId);
     }
   }
 
-  private loadDepartments(): void {
-    this.employeeService.getDepartments().subscribe({
+  // ─── Form Setup ───────────────────────────────────────────────────────────
+
+  private buildForm(): void {
+    this.form = this.fb.group({
+      // Personal Info
+      firstName: ['', [Validators.required, Validators.maxLength(100)]],
+      lastName:  ['', [Validators.required, Validators.maxLength(100)]],
+      email:     ['', [Validators.required, Validators.email]],
+      phone:     ['', [Validators.pattern(/^\+?[\d\s\-().]{7,20}$/)]],
+
+      // Employment
+      jobTitle:       ['', [Validators.required, Validators.maxLength(100)]],
+      departmentId:   ['', Validators.required],
+      employmentType: ['full_time', Validators.required],
+      startDate:      ['', Validators.required],
+      location:       [''],
+      salary:         [null, [Validators.min(0)]],
+      currency:       ['USD'],
+
+      // Status (edit mode only)
+      employmentStatus: ['active'],
+      endDate: [''],
+
+      // Skills (comma-separated)
+      skillsInput: [''],
+      notes: ['', Validators.maxLength(2000)],
+    });
+  }
+
+  // ─── Data Loading ─────────────────────────────────────────────────────────
+
+  loadDepartments(): void {
+    this.departmentService.getDepartments().subscribe({
       next: (res) => (this.departments = res.data),
     });
   }
 
-  private loadEmployee(): void {
-    this.isLoadingEmployee = true;
-    this.employeeService.getEmployeeById(this.employeeId!).subscribe({
+  loadEmployee(id: string): void {
+    this.isLoading = true;
+    this.employeeService.getEmployee(id).subscribe({
       next: (res) => {
-        const e = res.data;
-        this.personalForm.patchValue({
-          firstName: e.firstName,
-          lastName: e.lastName,
-          email: e.email,
-          phone: e.phone,
-          dateOfBirth: e.dateOfBirth,
-          gender: e.gender,
-        });
-        this.employmentForm.patchValue({
-          jobTitle: e.jobTitle,
-          departmentId: e.departmentId,
-          managerId: e.managerId,
-          employmentType: e.employmentType,
-          status: e.status,
-          hireDate: e.hireDate,
-          salary: e.salary,
-          currency: e.currency,
-        });
-        if (e.address) {
-          this.contactForm.patchValue({
-            street: e.address.street,
-            city: e.address.city,
-            state: e.address.state,
-            country: e.address.country,
-            postalCode: e.address.postalCode,
-          });
-        }
-        if (e.emergencyContact) {
-          this.contactForm.patchValue({
-            ecName: e.emergencyContact.name,
-            ecRelationship: e.emergencyContact.relationship,
-            ecPhone: e.emergencyContact.phone,
-            ecEmail: e.emergencyContact.email,
-          });
-        }
-        this.isLoadingEmployee = false;
+        this.employee = res.data;
+        this.patchForm(res.data);
+        this.isLoading = false;
       },
       error: () => {
-        this.isLoadingEmployee = false;
+        this.notifications.error('Employee not found.');
         this.router.navigate(['/employees']);
       },
     });
   }
 
-  onSubmit(): void {
-    if (this.personalForm.invalid || this.employmentForm.invalid) {
-      this.personalForm.markAllAsTouched();
-      this.employmentForm.markAllAsTouched();
-      return;
-    }
-
-    const cv = this.contactForm.value;
-    const payload = {
-      ...this.personalForm.value,
-      ...this.employmentForm.value,
-      address: cv.street
-        ? {
-            street: cv.street,
-            city: cv.city,
-            state: cv.state,
-            country: cv.country,
-            postalCode: cv.postalCode,
-          }
-        : undefined,
-      emergencyContact: cv.ecName
-        ? {
-            name: cv.ecName,
-            relationship: cv.ecRelationship,
-            phone: cv.ecPhone,
-            email: cv.ecEmail,
-          }
-        : undefined,
-    };
-
-    this.isLoading = true;
-    const request = this.isEditMode
-      ? this.employeeService.updateEmployee(this.employeeId!, payload)
-      : this.employeeService.createEmployee(payload);
-
-    request.subscribe({
-      next: (res) => {
-        this.isLoading = false;
-        this.notification.success(
-          this.isEditMode ? 'Employee updated successfully.' : 'Employee created successfully.',
-        );
-        this.router.navigate(['/employees', res.data.id]);
-      },
-      error: () => {
-        this.isLoading = false;
-      },
+  private patchForm(emp: Employee): void {
+    this.form.patchValue({
+      firstName:        emp.firstName,
+      lastName:         emp.lastName,
+      email:            emp.email,
+      phone:            emp.phone ?? '',
+      jobTitle:         emp.jobTitle,
+      departmentId:     emp.departmentId,
+      employmentType:   emp.employmentType,
+      startDate:        emp.startDate,
+      location:         emp.location ?? '',
+      salary:           emp.salary ?? null,
+      currency:         emp.currency ?? 'USD',
+      employmentStatus: emp.employmentStatus,
+      endDate:          emp.endDate ?? '',
+      skillsInput:      (emp.skills ?? []).join(', '),
+      notes:            emp.notes ?? '',
     });
   }
 
-  onCancel(): void {
-    this.router.navigate([this.isEditMode ? `/employees/${this.employeeId}` : '/employees']);
+  // ─── Form Submission ──────────────────────────────────────────────────────
+
+  onSubmit(): void {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      this.notifications.warning('Please fix the validation errors before submitting.');
+      return;
+    }
+
+    this.isSubmitting = true;
+    const payload = this.buildPayload();
+
+    const request$ = this.isEditMode && this.employeeId
+      ? this.employeeService.updateEmployee(this.employeeId, payload)
+      : this.employeeService.createEmployee(payload);
+
+    request$
+      .pipe(finalize(() => (this.isSubmitting = false)))
+      .subscribe({
+        next: (res) => {
+          const name = `${res.data.firstName} ${res.data.lastName}`;
+          this.notifications.success(
+            this.isEditMode ? 'Employee updated' : 'Employee created',
+            name,
+          );
+          this.router.navigate(['/employees', res.data.id]);
+        },
+      });
+  }
+
+  private buildPayload(): Record<string, unknown> {
+    const raw = this.form.value;
+    const skills = raw.skillsInput
+      ? raw.skillsInput.split(',').map((s: string) => s.trim()).filter(Boolean)
+      : [];
+
+    return {
+      firstName:        raw.firstName,
+      lastName:         raw.lastName,
+      email:            raw.email,
+      phone:            raw.phone || undefined,
+      jobTitle:         raw.jobTitle,
+      departmentId:     raw.departmentId,
+      employmentType:   raw.employmentType,
+      startDate:        raw.startDate,
+      location:         raw.location || undefined,
+      salary:           raw.salary || undefined,
+      currency:         raw.currency || undefined,
+      employmentStatus: raw.employmentStatus,
+      endDate:          raw.endDate || undefined,
+      skills:           skills.length ? skills : undefined,
+      notes:            raw.notes || undefined,
+    };
+  }
+
+  cancel(): void {
+    if (this.isEditMode && this.employeeId) {
+      this.router.navigate(['/employees', this.employeeId]);
+    } else {
+      this.router.navigate(['/employees']);
+    }
+  }
+
+  // ─── Template Helpers ─────────────────────────────────────────────────────
+
+  getControl(name: string): AbstractControl {
+    return this.form.get(name)!;
+  }
+
+  isInvalid(name: string): boolean {
+    const ctrl = this.getControl(name);
+    return ctrl.invalid && ctrl.touched;
+  }
+
+  get pageTitle(): string {
+    return this.isEditMode ? 'Edit Employee' : 'Add New Employee';
   }
 }

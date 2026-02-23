@@ -1,20 +1,14 @@
+/**
+ * Production environment configuration.
+ * API URLs and feature flags for the production build.
+ * Secrets (JWT keys, API credentials) must come from the server — not this file.
+ */
 export const environment = {
   production: true,
-  apiBaseUrl: '/api/v1',
-  apiTimeout: 30000,
   appName: 'Employee Portal',
-  version: '1.0.0',
-  features: {
-    darkMode: true,
-    notifications: true,
-    reports: true,
-  },
-  pagination: {
-    defaultPageSize: 10,
-    maxPageSize: 100,
-  },
-  logging: {
-    level: 'error', // Only log errors in production
-    enableConsole: false,
-  },
+  appVersion: '1.0.0',
+  apiBaseUrl: '/api/v1',   // Relative URL — served by the same host via nginx reverse proxy
+  apiTimeout: 30000,
+  enableAnalytics: true,
+  logLevel: 'error',
 };

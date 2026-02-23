@@ -1,8 +1,9 @@
 /**
- * User / Authentication domain models
+ * User model representing an authenticated portal user.
+ * Roles drive what the user can see and do (RBAC).
  */
 
-export type UserRole = 'admin' | 'hr-manager' | 'manager' | 'employee';
+export type UserRole = 'admin' | 'hr_manager' | 'team_lead' | 'employee';
 
 export interface User {
   id: string;
@@ -10,36 +11,26 @@ export interface User {
   firstName: string;
   lastName: string;
   role: UserRole;
-  employeeId?: string; // Link to employee record
   avatarUrl?: string;
-  isActive: boolean;
   lastLoginAt?: string;
-  createdAt: string;
+  isActive: boolean;
 }
 
-export interface LoginRequest {
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}
+
+export interface LoginCredentials {
   email: string;
   password: string;
   rememberMe?: boolean;
 }
 
 export interface LoginResponse {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number; // seconds
   user: User;
-}
-
-export interface RegisterRequest {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  role?: UserRole;
-}
-
-export interface RefreshTokenRequest {
-  refreshToken: string;
+  tokens: AuthTokens;
 }
 
 export interface ChangePasswordRequest {
@@ -47,36 +38,3 @@ export interface ChangePasswordRequest {
   newPassword: string;
   confirmPassword: string;
 }
-
-export interface UpdateProfileRequest {
-  firstName?: string;
-  lastName?: string;
-  avatarUrl?: string;
-}
-
-export interface AuthState {
-  user: User | null;
-  accessToken: string | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-}
-
-/** Permissions mapped to roles — used by guards and directives */
-export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
-  admin: ['*'],
-  'hr-manager': [
-    'employees:read',
-    'employees:write',
-    'employees:delete',
-    'departments:read',
-    'departments:write',
-    'reports:read',
-  ],
-  manager: [
-    'employees:read',
-    'employees:write',
-    'departments:read',
-    'reports:read',
-  ],
-  employee: ['profile:read', 'profile:write'],
-};

@@ -1,47 +1,45 @@
-import { Component, EventEmitter, Output, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { Router, RouterModule } from '@angular/router';
-import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatBadgeModule } from '@angular/material/badge';
-import { MatTooltipModule } from '@angular/material/tooltip';
+import { Component, Output, EventEmitter, OnInit } from '@angular/core';
 import { AuthService } from '../../../core/services/auth.service';
+import { User } from '../../../core/models/user.model';
 
 @Component({
   selector: 'app-header',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterModule,
-    MatToolbarModule,
-    MatButtonModule,
-    MatIconModule,
-    MatMenuModule,
-    MatDividerModule,
-    MatBadgeModule,
-    MatTooltipModule,
-  ],
   templateUrl: './header.component.html',
   styleUrls: ['./header.component.scss'],
 })
-export class HeaderComponent {
-  @Output() sidenavToggle = new EventEmitter<void>();
+export class HeaderComponent implements OnInit {
+  @Output() sidebarToggle = new EventEmitter<void>();
 
-  protected readonly authService = inject(AuthService);
-  private readonly router = inject(Router);
+  currentUser: User | null = null;
+  showUserMenu = false;
 
-  onToggleSidenav(): void {
-    this.sidenavToggle.emit();
+  constructor(private authService: AuthService) {}
+
+  ngOnInit(): void {
+    this.authService.currentUser$.subscribe(
+      (user) => (this.currentUser = user),
+    );
   }
 
-  onLogout(): void {
+  toggleSidebar(): void {
+    this.sidebarToggle.emit();
+  }
+
+  toggleUserMenu(): void {
+    this.showUserMenu = !this.showUserMenu;
+  }
+
+  closeUserMenu(): void {
+    this.showUserMenu = false;
+  }
+
+  logout(): void {
+    this.closeUserMenu();
     this.authService.logout();
   }
 
-  onViewProfile(): void {
-    this.router.navigate(['/profile']);
+  get userInitials(): string {
+    if (!this.currentUser) return '';
+    return `${this.currentUser.firstName[0]}${this.currentUser.lastName[0]}`;
   }
 }

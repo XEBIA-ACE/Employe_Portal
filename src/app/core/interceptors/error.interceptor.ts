@@ -1,62 +1,87 @@
-import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
-import { inject } from '@angular/core';
-import { catchError, throwError } from 'rxjs';
+import { Injectable } from '@angular/core';
+import {
+  HttpInterceptor,
+  HttpRequest,
+  HttpHandler,
+  HttpEvent,
+  HttpErrorResponse,
+} from '@angular/common/http';
+import { Observable, throwError, catchError } from 'rxjs';
 import { NotificationService } from '../services/notification.service';
-import { LoggerService } from '../services/logger.service';
 
 /**
- * Global HTTP error interceptor.
- * Maps common HTTP error status codes to user-friendly messages
- * and logs them via the structured logger.
+ * Global HTTP error handler.
+ * Maps common HTTP error codes to user-friendly notifications and
+ * re-throws the error so components can react if needed.
  */
-export const errorInterceptor: HttpInterceptorFn = (req, next) => {
-  const notification = inject(NotificationService);
-  const logger = inject(LoggerService);
+@Injectable()
+export class ErrorInterceptor implements HttpInterceptor {
+  constructor(private notificationService: NotificationService) {}
 
-  return next(req).pipe(
-    catchError((error: HttpErrorResponse) => {
-      logger.error(
-        `HTTP ${error.status} on ${req.method} ${req.url}`,
-        'ErrorInterceptor',
-        error,
-      );
+  intercept(
+    req: HttpRequest<unknown>,
+    next: HttpHandler,
+  ): Observable<HttpEvent<unknown>> {
+    return next.handle(req).pipe(
+      catchError((error: HttpErrorResponse) => {
+        const message = this.extractMessage(error);
 
-      const message = resolveErrorMessage(error);
+        switch (error.status) {
+          case 0:
+            this.notificationService.error(
+              'Connection Error',
+              'Unable to reach the server. Check your network connection.',
+            );
+            break;
+          case 400:
+            this.notificationService.error('Bad Request', message);
+            break;
+          case 403:
+            this.notificationService.error(
+              'Access Denied',
+              'You do not have permission to perform this action.',
+            );
+            break;
+          case 404:
+            this.notificationService.error('Not Found', message);
+            break;
+          case 409:
+            this.notificationService.error('Conflict', message);
+            break;
+          case 422:
+            this.notificationService.error('Validation Error', message);
+            break;
+          case 429:
+            this.notificationService.warning(
+              'Rate Limited',
+              'Too many requests. Please wait before trying again.',
+            );
+            break;
+          case 500:
+          case 502:
+          case 503:
+            this.notificationService.error(
+              'Server Error',
+              'An unexpected error occurred. Please try again later.',
+            );
+            break;
+          default:
+            if (error.status !== 401) {
+              // 401s are handled by AuthInterceptor
+              this.notificationService.error('Error', message);
+            }
+        }
 
-      // Don't show notification for 401 — the auth interceptor handles those
-      if (error.status !== 401) {
-        notification.error(message);
-      }
-
-      return throwError(() => error);
-    }),
-  );
-};
-
-function resolveErrorMessage(error: HttpErrorResponse): string {
-  // Server returned a structured error body
-  if (error.error?.message) {
-    return error.error.message;
+        return throwError(() => error);
+      }),
+    );
   }
 
-  switch (error.status) {
-    case 400:
-      return 'Invalid request. Please check your inputs.';
-    case 403:
-      return 'You are not authorised to perform this action.';
-    case 404:
-      return 'The requested resource was not found.';
-    case 409:
-      return 'A conflict occurred. The resource may already exist.';
-    case 422:
-      return 'The data provided could not be processed.';
-    case 500:
-      return 'An internal server error occurred. Please try again later.';
-    case 503:
-      return 'The service is temporarily unavailable. Please try again later.';
-    case 0:
-      return 'Unable to connect to the server. Please check your network connection.';
-    default:
-      return `An unexpected error occurred (${error.status}).`;
+  private extractMessage(error: HttpErrorResponse): string {
+    const body = error.error;
+    if (!body) return error.message;
+    if (typeof body === 'string') return body;
+    if (Array.isArray(body.message)) return body.message.join(', ');
+    return body.message ?? error.message;
   }
 }

@@ -1,58 +1,38 @@
-import { Component, ViewChild, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { RouterOutlet, RouterModule, Router, NavigationEnd } from '@angular/router';
+import { Component, OnInit } from '@angular/core';
+import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs';
-import { MatSidenavModule, MatSidenav } from '@angular/material/sidenav';
-import { MatToolbarModule } from '@angular/material/toolbar';
-import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { AuthService } from './core/services/auth.service';
-import { HeaderComponent } from './shared/components/header/header.component';
-import { SidebarComponent } from './shared/components/sidebar/sidebar.component';
 
 @Component({
   selector: 'app-root',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterOutlet,
-    RouterModule,
-    MatSidenavModule,
-    MatToolbarModule,
-    HeaderComponent,
-    SidebarComponent,
-  ],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
 })
-export class AppComponent {
-  @ViewChild('sidenav') sidenav!: MatSidenav;
+export class AppComponent implements OnInit {
+  title = 'Employee Portal';
+  sidebarCollapsed = false;
+  isAuthRoute = false;
 
-  readonly currentYear = new Date().getFullYear();
-  protected readonly authService = inject(AuthService);
-  private readonly breakpointObserver = inject(BreakpointObserver);
-  private readonly router = inject(Router);
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+  ) {}
 
-  isMobile = false;
-
-  constructor() {
-    this.breakpointObserver.observe([Breakpoints.Handset]).subscribe((result) => {
-      this.isMobile = result.matches;
-      if (this.isMobile && this.sidenav?.opened) {
-        this.sidenav.close();
-      }
-    });
-
-    // Auto-close sidebar on mobile after navigation
+  ngOnInit(): void {
+    // Hide the app shell (header + sidebar) on auth routes
     this.router.events
       .pipe(filter((e) => e instanceof NavigationEnd))
-      .subscribe(() => {
-        if (this.isMobile) {
-          this.sidenav?.close();
-        }
+      .subscribe((e) => {
+        const url = (e as NavigationEnd).urlAfterRedirects;
+        this.isAuthRoute = url.startsWith('/auth');
       });
   }
 
-  onSidenavToggle(): void {
-    this.sidenav?.toggle();
+  get isAuthenticated(): boolean {
+    return this.authService.isAuthenticated;
+  }
+
+  toggleSidebar(): void {
+    this.sidebarCollapsed = !this.sidebarCollapsed;
   }
 }

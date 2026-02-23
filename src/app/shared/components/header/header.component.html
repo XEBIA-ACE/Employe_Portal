@@ -1,73 +1,54 @@
-<mat-toolbar class="app-toolbar" color="primary">
-  <!-- Sidenav toggle -->
+<header class="app-header" role="banner">
+  <!-- Hamburger / Sidebar Toggle -->
   <button
-    mat-icon-button
-    (click)="onToggleSidenav()"
-    matTooltip="Toggle menu"
-    aria-label="Toggle side navigation"
+    class="header-btn"
+    (click)="toggleSidebar()"
+    aria-label="Toggle sidebar navigation"
   >
-    <mat-icon>menu</mat-icon>
+    ☰
   </button>
 
-  <!-- App brand -->
-  <a routerLink="/dashboard" class="brand-link" aria-label="Go to dashboard">
-    <mat-icon class="brand-icon">business</mat-icon>
-    <span class="brand-name">Employee Portal</span>
+  <!-- App Brand (visible on mobile) -->
+  <a routerLink="/dashboard" class="header-brand">
+    <span class="header-brand__icon">EP</span>
+    <span class="header-brand__text">Employee Portal</span>
   </a>
 
-  <span class="toolbar-spacer"></span>
+  <div class="header-spacer"></div>
 
-  <!-- Notifications (placeholder) -->
-  <button
-    mat-icon-button
-    matTooltip="Notifications"
-    aria-label="View notifications"
-  >
-    <mat-icon [matBadge]="3" matBadgeColor="warn" matBadgeSize="small">
-      notifications
-    </mat-icon>
+  <!-- Notifications placeholder -->
+  <button class="header-btn" aria-label="Notifications">
+    🔔
   </button>
 
-  <!-- User menu -->
-  <button
-    mat-icon-button
-    [matMenuTriggerFor]="userMenu"
-    class="user-avatar-btn"
-    aria-label="Open user menu"
-  >
-    @if (authService.currentUser()?.avatarUrl) {
-      <img
-        [src]="authService.currentUser()!.avatarUrl"
-        [alt]="authService.currentUser()!.firstName"
-        class="user-avatar"
-      />
-    } @else {
-      <mat-icon>account_circle</mat-icon>
-    }
-  </button>
+  <!-- User Menu -->
+  <div class="user-menu" (clickOutside)="closeUserMenu()">
+    <button
+      class="user-menu__trigger"
+      (click)="toggleUserMenu()"
+      [attr.aria-expanded]="showUserMenu"
+      aria-haspopup="true"
+    >
+      <div class="avatar avatar--sm">{{ userInitials }}</div>
+      <span class="user-menu__name">
+        {{ currentUser?.firstName }} {{ currentUser?.lastName }}
+      </span>
+      <span class="user-menu__chevron" [class.rotated]="showUserMenu">▾</span>
+    </button>
 
-  <mat-menu #userMenu="matMenu" xPosition="before">
-    <!-- User info header -->
-    <div class="menu-user-info" (click)="$event.stopPropagation()">
-      <p class="user-name">
-        {{ authService.currentUser()?.firstName }} {{ authService.currentUser()?.lastName }}
-      </p>
-      <p class="user-email">{{ authService.currentUser()?.email }}</p>
-      <span class="role-chip">{{ authService.userRole() }}</span>
+    <div class="user-menu__dropdown" *ngIf="showUserMenu" role="menu">
+      <a
+        routerLink="/profile"
+        class="user-menu__item"
+        role="menuitem"
+        (click)="closeUserMenu()"
+      >
+        👤 My Profile
+      </a>
+      <div class="user-menu__divider"></div>
+      <button class="user-menu__item user-menu__item--danger" role="menuitem" (click)="logout()">
+        🚪 Sign Out
+      </button>
     </div>
-    <mat-divider></mat-divider>
-    <button mat-menu-item (click)="onViewProfile()">
-      <mat-icon>person</mat-icon>
-      <span>My Profile</span>
-    </button>
-    <button mat-menu-item routerLink="/profile/settings">
-      <mat-icon>settings</mat-icon>
-      <span>Settings</span>
-    </button>
-    <mat-divider></mat-divider>
-    <button mat-menu-item (click)="onLogout()" class="logout-btn">
-      <mat-icon>logout</mat-icon>
-      <span>Sign Out</span>
-    </button>
-  </mat-menu>
-</mat-toolbar>
+  </div>
+</header>
