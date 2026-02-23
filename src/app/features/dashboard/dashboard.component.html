@@ -1,0 +1,137 @@
+<div class="page-container">
+  <!-- Page header -->
+  <div class="section-header">
+    <div>
+      <h2>Dashboard</h2>
+      <p class="text-muted">
+        Welcome back, {{ authService.currentUser()?.firstName }}! Here's what's happening.
+      </p>
+    </div>
+    <button mat-raised-button color="primary" routerLink="/employees/new">
+      <mat-icon>person_add</mat-icon>
+      Add Employee
+    </button>
+  </div>
+
+  @if (isLoading) {
+    <app-loading-spinner message="Loading dashboard…"></app-loading-spinner>
+  } @else {
+
+    <!-- KPI stat cards -->
+    <div class="stat-cards-grid">
+      @for (card of statCards; track card.title) {
+        <mat-card class="stat-card" [class.clickable]="!!card.route" [routerLink]="card.route">
+          <mat-card-content>
+            <div class="stat-card-body">
+              <div class="stat-info">
+                <p class="stat-label">{{ card.title }}</p>
+                <p class="stat-value">{{ card.value | number }}</p>
+                @if (card.change !== undefined) {
+                  <p class="stat-change" [class.positive]="card.change >= 0">
+                    <mat-icon>{{ card.change >= 0 ? 'trending_up' : 'trending_down' }}</mat-icon>
+                    {{ card.change >= 0 ? '+' : '' }}{{ card.change }}% this month
+                  </p>
+                }
+              </div>
+              <div class="stat-icon-wrapper" [style.background]="card.color + '20'">
+                <mat-icon [style.color]="card.color">{{ card.icon }}</mat-icon>
+              </div>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      }
+    </div>
+
+    <div class="dashboard-grid">
+      <!-- Employees by department -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-card-title>Employees by Department</mat-card-title>
+          <mat-card-subtitle>Headcount distribution</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          @for (dept of stats?.byDepartment; track dept.department) {
+            <div class="dept-row">
+              <span class="dept-name">{{ dept.department }}</span>
+              <div class="dept-bar-wrapper">
+                <mat-progress-bar
+                  mode="determinate"
+                  [value]="(dept.count / (stats?.total ?? 1)) * 100"
+                  color="primary"
+                ></mat-progress-bar>
+              </div>
+              <span class="dept-count">{{ dept.count }}</span>
+            </div>
+          }
+        </mat-card-content>
+        <mat-card-actions>
+          <button mat-button routerLink="/employees" color="primary">
+            View All Employees
+            <mat-icon>arrow_forward</mat-icon>
+          </button>
+        </mat-card-actions>
+      </mat-card>
+
+      <!-- Employment type breakdown -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-card-title>Employment Types</mat-card-title>
+          <mat-card-subtitle>By contract type</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="type-chips">
+            @for (item of stats?.byEmploymentType; track item.type) {
+              <div class="type-chip-row">
+                <span class="type-label">{{ item.type | titlecase }}</span>
+                <div class="type-bar-wrapper">
+                  <mat-progress-bar
+                    mode="determinate"
+                    [value]="(item.count / (stats?.total ?? 1)) * 100"
+                    color="accent"
+                  ></mat-progress-bar>
+                </div>
+                <span class="type-count">
+                  {{ item.count }}
+                  <span class="type-pct">({{ ((item.count / (stats?.total ?? 1)) * 100) | number:'1.0-0' }}%)</span>
+                </span>
+              </div>
+            }
+          </div>
+        </mat-card-content>
+        <mat-card-actions>
+          <button mat-button routerLink="/reports" color="primary">
+            View Reports
+            <mat-icon>arrow_forward</mat-icon>
+          </button>
+        </mat-card-actions>
+      </mat-card>
+
+      <!-- Quick actions -->
+      <mat-card class="quick-actions-card">
+        <mat-card-header>
+          <mat-card-title>Quick Actions</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="quick-actions">
+            <button mat-stroked-button routerLink="/employees/new" class="action-btn">
+              <mat-icon>person_add</mat-icon>
+              <span>Add Employee</span>
+            </button>
+            <button mat-stroked-button routerLink="/employees" class="action-btn">
+              <mat-icon>people</mat-icon>
+              <span>View All</span>
+            </button>
+            <button mat-stroked-button routerLink="/reports" class="action-btn">
+              <mat-icon>bar_chart</mat-icon>
+              <span>Reports</span>
+            </button>
+            <button mat-stroked-button routerLink="/profile" class="action-btn">
+              <mat-icon>account_circle</mat-icon>
+              <span>My Profile</span>
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  }
+</div>

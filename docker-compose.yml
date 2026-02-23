@@ -1,100 +1,64 @@
 version: '3.9'
 
+# ── Employee Portal — Local Development Stack ──────────────
+# Services:
+#   frontend  — Angular dev server (with HMR)
+#   backend   — Placeholder REST API (replace with your backend)
+
 services:
-  # Angular frontend served via Nginx
+
+  # ── Angular dev server ────────────────────────────────────
   frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: employee_portal_frontend
+    ports:
+      - '4200:4200'
+    volumes:
+      # Mount source for live-reload; exclude node_modules
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true # Required for file-watching in Docker on some OSes
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - portal_net
+
+  # ── Backend API placeholder ───────────────────────────────
+  # Replace this with your real backend service / image
+  backend:
+    image: node:20-alpine
+    container_name: employee_portal_backend
+    working_dir: /api
+    command: sh -c "npm install -g json-server && json-server --watch db.json --port 3000 --host 0.0.0.0"
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./mock-api:/api
+    restart: unless-stopped
+    networks:
+      - portal_net
+
+  # ── Production build preview ──────────────────────────────
+  # Run:  docker-compose up frontend-prod
+  frontend-prod:
     build:
       context: .
       dockerfile: Dockerfile
       target: production
-    container_name: employee-portal-frontend
+    container_name: employee_portal_prod
     ports:
-      - '${APP_PORT:-4200}:80'
-    environment:
-      - NODE_ENV=production
-    networks:
-      - portal-network
-    depends_on:
-      - backend
+      - '8080:80'
     restart: unless-stopped
-    healthcheck:
-      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:80/health']
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
-
-  # Placeholder backend API (replace with your actual backend service)
-  backend:
-    image: node:20-alpine
-    container_name: employee-portal-backend
-    working_dir: /app
-    volumes:
-      - ./mock-backend:/app
-    command: sh -c "npm install && node server.js"
-    ports:
-      - '3000:3000'
-    environment:
-      - NODE_ENV=development
-      - PORT=3000
-      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=${DB_NAME:-employee_portal}
-      - DB_USER=${DB_USER:-postgres}
-      - DB_PASSWORD=${DB_PASSWORD:-postgres}
     networks:
-      - portal-network
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: unless-stopped
-
-  # PostgreSQL database
-  postgres:
-    image: postgres:16-alpine
-    container_name: employee-portal-db
-    environment:
-      - POSTGRES_DB=${DB_NAME:-employee_portal}
-      - POSTGRES_USER=${DB_USER:-postgres}
-      - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - '5432:5432'
-    networks:
-      - portal-network
-    restart: unless-stopped
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-employee_portal}']
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
-  # Development-only: Angular dev server with hot reload
-  frontend-dev:
-    image: node:20-alpine
-    container_name: employee-portal-dev
-    working_dir: /app
-    volumes:
-      - .:/app
-      - /app/node_modules
-    command: sh -c "npm ci && npm start -- --host 0.0.0.0 --port 4200"
-    ports:
-      - '4200:4200'
-    environment:
-      - NODE_ENV=development
-    networks:
-      - portal-network
+      - portal_net
     profiles:
-      - dev
-    restart: unless-stopped
-
-volumes:
-  postgres_data:
-    driver: local
+      - prod
 
 networks:
-  portal-network:
+  portal_net:
     driver: bridge

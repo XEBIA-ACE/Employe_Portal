@@ -1,0 +1,52 @@
+<nav class="sidebar-nav" aria-label="Main navigation">
+  <!-- User summary -->
+  <div class="sidebar-user">
+    <div class="user-avatar-wrapper">
+      @if (authService.currentUser()?.avatarUrl) {
+        <img
+          [src]="authService.currentUser()!.avatarUrl"
+          [alt]="authService.currentUser()!.firstName"
+          class="user-avatar"
+        />
+      } @else {
+        <div class="user-avatar-placeholder">
+          {{ authService.currentUser()?.firstName?.charAt(0) }}{{ authService.currentUser()?.lastName?.charAt(0) }}
+        </div>
+      }
+    </div>
+    <div class="user-info">
+      <p class="user-name">
+        {{ authService.currentUser()?.firstName }} {{ authService.currentUser()?.lastName }}
+      </p>
+      <span class="user-role">{{ authService.userRole() }}</span>
+    </div>
+  </div>
+
+  <mat-divider></mat-divider>
+
+  <!-- Navigation links -->
+  <mat-nav-list class="nav-list">
+    @for (item of navItems; track item.route) {
+      @if (isNavItemVisible(item)) {
+        <a
+          mat-list-item
+          [routerLink]="item.route"
+          routerLinkActive="active-link"
+          [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }"
+          class="nav-item"
+          [attr.aria-label]="item.label"
+        >
+          <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+          <span matListItemTitle>{{ item.label }}</span>
+        </a>
+      }
+    }
+  </mat-nav-list>
+
+  <mat-divider></mat-divider>
+
+  <!-- Version footer -->
+  <div class="sidebar-footer">
+    <p class="version-text">Employee Portal v1.0.0</p>
+  </div>
+</nav>

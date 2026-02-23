@@ -1,0 +1,97 @@
+<div class="login-page">
+  <div class="login-container">
+    <!-- Brand header -->
+    <div class="login-brand">
+      <mat-icon class="brand-icon">business</mat-icon>
+      <h1 class="brand-title">Employee Portal</h1>
+      <p class="brand-subtitle">Sign in to your account</p>
+    </div>
+
+    <!-- Login card -->
+    <mat-card class="login-card">
+      <mat-card-content>
+        <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" novalidate>
+
+          <!-- Email -->
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Email address</mat-label>
+            <input
+              matInput
+              type="email"
+              formControlName="email"
+              placeholder="you@company.com"
+              autocomplete="email"
+              [attr.aria-label]="'Email address'"
+            />
+            <mat-icon matPrefix>email</mat-icon>
+            @if (emailControl.hasError('required') && emailControl.touched) {
+              <mat-error>Email is required</mat-error>
+            } @else if (emailControl.hasError('email') && emailControl.touched) {
+              <mat-error>Please enter a valid email address</mat-error>
+            }
+          </mat-form-field>
+
+          <!-- Password -->
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Password</mat-label>
+            <input
+              matInput
+              [type]="showPassword ? 'text' : 'password'"
+              formControlName="password"
+              autocomplete="current-password"
+              [attr.aria-label]="'Password'"
+            />
+            <mat-icon matPrefix>lock</mat-icon>
+            <button
+              mat-icon-button
+              matSuffix
+              type="button"
+              (click)="showPassword = !showPassword"
+              [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'"
+            >
+              <mat-icon>{{ showPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+            </button>
+            @if (passwordControl.hasError('required') && passwordControl.touched) {
+              <mat-error>Password is required</mat-error>
+            } @else if (passwordControl.hasError('minlength') && passwordControl.touched) {
+              <mat-error>Password must be at least 8 characters</mat-error>
+            }
+          </mat-form-field>
+
+          <!-- Remember me & Forgot password -->
+          <div class="form-options">
+            <mat-checkbox formControlName="rememberMe" color="primary">
+              Remember me
+            </mat-checkbox>
+            <a routerLink="/auth/forgot-password" class="forgot-link">
+              Forgot password?
+            </a>
+          </div>
+
+          <!-- Submit button -->
+          <button
+            mat-raised-button
+            color="primary"
+            type="submit"
+            class="full-width submit-btn"
+            [disabled]="isLoading"
+          >
+            @if (isLoading) {
+              <mat-spinner diameter="20" color="accent"></mat-spinner>
+              <span>Signing in…</span>
+            } @else {
+              <mat-icon>login</mat-icon>
+              <span>Sign In</span>
+            }
+          </button>
+        </form>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Register link -->
+    <p class="register-prompt">
+      Don't have an account?
+      <a routerLink="/auth/register" class="register-link">Create one</a>
+    </p>
+  </div>
+</div>

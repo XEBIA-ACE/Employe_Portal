@@ -1,44 +1,47 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import {
+  HttpClientTestingModule,
+  HttpTestingController,
+} from '@angular/common/http/testing';
 import { RouterTestingModule } from '@angular/router/testing';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { AuthService } from './auth.service';
 import { LoggerService } from './logger.service';
-import { environment } from '@environments/environment';
-import { AuthUser } from '@core/models/user.model';
+import { NotificationService } from './notification.service';
+import { LoginResponse, User } from '../models/user.model';
+import { environment } from '../../../environments/environment';
+
+const mockUser: User = {
+  id: 'u1',
+  email: 'test@example.com',
+  firstName: 'Test',
+  lastName: 'User',
+  role: 'employee',
+  isActive: true,
+  createdAt: '2024-01-01T00:00:00Z',
+};
+
+const mockLoginResponse: LoginResponse = {
+  accessToken: 'mock-access-token',
+  refreshToken: 'mock-refresh-token',
+  expiresIn: 3600,
+  user: mockUser,
+};
 
 describe('AuthService', () => {
   let service: AuthService;
   let httpMock: HttpTestingController;
 
-  const mockAuthUser: AuthUser = {
-    user: {
-      id: '1',
-      employeeId: 'EMP001',
-      email: 'admin@example.com',
-      firstName: 'John',
-      lastName: 'Doe',
-      role: 'admin',
-      departmentId: 'dept-1',
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    accessToken: 'mock-access-token',
-    refreshToken: 'mock-refresh-token',
-    expiresIn: 3600
-  };
-
   beforeEach(() => {
+    localStorage.clear();
+
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule, RouterTestingModule],
-      providers: [AuthService, LoggerService]
+      imports: [HttpClientTestingModule, RouterTestingModule, MatSnackBarModule],
+      providers: [AuthService, LoggerService, NotificationService],
     });
 
     service = TestBed.inject(AuthService);
     httpMock = TestBed.inject(HttpTestingController);
-
-    // Clear localStorage before each test
-    localStorage.clear();
   });
 
   afterEach(() => {
@@ -50,60 +53,67 @@ describe('AuthService', () => {
     expect(service).toBeTruthy();
   });
 
-  it('should not be authenticated initially', () => {
-    expect(service.isAuthenticated()).toBe(false);
-    expect(service.currentUser()).toBeNull();
-  });
-
   describe('login()', () => {
-    it('should authenticate and store tokens on successful login', () => {
-      service.login({ email: 'admin@example.com', password: 'password123' }).subscribe({
-        next: (res) => {
-          expect(res.data).toEqual(mockAuthUser);
-          expect(service.isAuthenticated()).toBe(true);
-          expect(service.currentUser()?.email).toBe('admin@example.com');
-          expect(localStorage.getItem(environment.tokenKey)).toBe('mock-access-token');
-        }
+    it('should post credentials and store tokens on success', () => {
+      service.login({ email: 'test@example.com', password: 'password123' }).subscribe((res) => {
+        expect(res.accessToken).toBe('mock-access-token');
+        expect(service.isAuthenticated()).toBeTrue();
+        expect(service.currentUser()?.email).toBe('test@example.com');
+        expect(localStorage.getItem('ep_access_token')).toBe('mock-access-token');
       });
 
-      const req = httpMock.expectOne(`${environment.apiUrl}/auth/login`);
+      const req = httpMock.expectOne(`${environment.apiBaseUrl}/auth/login`);
       expect(req.request.method).toBe('POST');
-      req.flush({ data: mockAuthUser });
+      req.flush(mockLoginResponse);
     });
 
-    it('should propagate error on failed login', () => {
-      let errorReceived = false;
-
-      service.login({ email: 'wrong@example.com', password: 'wrongpass' }).subscribe({
-        error: () => { errorReceived = true; }
+    it('should set isLoading to false after error', () => {
+      service.login({ email: 'bad@example.com', password: 'wrong' }).subscribe({
+        error: () => {
+          expect(service.isLoading()).toBeFalse();
+        },
       });
 
-      const req = httpMock.expectOne(`${environment.apiUrl}/auth/login`);
-      req.flush({ message: 'Invalid credentials' }, { status: 401, statusText: 'Unauthorized' });
+      const req = httpMock.expectOne(`${environment.apiBaseUrl}/auth/login`);
+      req.flush({ message: 'Unauthorized' }, { status: 401, statusText: 'Unauthorized' });
+    });
+  });
 
-      expect(errorReceived).toBe(true);
-      expect(service.isAuthenticated()).toBe(false);
+  describe('logout()', () => {
+    it('should clear storage and reset user signal', () => {
+      localStorage.setItem('ep_access_token', 'token');
+      localStorage.setItem('ep_user', JSON.stringify(mockUser));
+
+      service.logout();
+
+      expect(service.isAuthenticated()).toBeFalse();
+      expect(localStorage.getItem('ep_access_token')).toBeNull();
     });
   });
 
   describe('hasRole()', () => {
     it('should return false when not authenticated', () => {
-      expect(service.hasRole(['admin'])).toBe(false);
+      expect(service.hasRole('admin')).toBeFalse();
+    });
+
+    it('should return true for matching role', () => {
+      // Simulate logged-in state
+      localStorage.setItem('ep_user', JSON.stringify(mockUser));
+      // Re-create service to pick up storage
+      const freshService: AuthService = TestBed.inject(AuthService);
+      expect(freshService.hasRole('employee')).toBeTrue();
+      expect(freshService.hasRole('admin')).toBeFalse();
     });
   });
 
   describe('getAccessToken()', () => {
-    it('should return null when not logged in', () => {
+    it('should return null when no token stored', () => {
       expect(service.getAccessToken()).toBeNull();
     });
 
-    it('should return token after login', () => {
-      service.login({ email: 'admin@example.com', password: 'password123' }).subscribe();
-
-      const req = httpMock.expectOne(`${environment.apiUrl}/auth/login`);
-      req.flush({ data: mockAuthUser });
-
-      expect(service.getAccessToken()).toBe('mock-access-token');
+    it('should return stored token', () => {
+      localStorage.setItem('ep_access_token', 'my-token');
+      expect(service.getAccessToken()).toBe('my-token');
     });
   });
 });

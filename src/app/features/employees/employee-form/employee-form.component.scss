@@ -1,0 +1,45 @@
+.page-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+
+  h2 {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+}
+
+.step-card {
+  margin-top: 16px;
+
+  h4 {
+    margin: 0 0 16px;
+    color: rgba(0, 0, 0, 0.6);
+    font-weight: 500;
+  }
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 4px;
+
+  mat-form-field {
+    flex: 1;
+  }
+
+  .full-span {
+    flex: 1;
+    min-width: 100%;
+  }
+
+  @media (max-width: 600px) {
+    flex-direction: column;
+    gap: 0;
+  }
+}
+
+.section-divider {
+  margin: 20px 0;
+}

@@ -1,0 +1,214 @@
+<div class="page-container">
+  <!-- Page header -->
+  <div class="section-header">
+    <div>
+      <h2>Employees</h2>
+      <p class="text-muted">Manage your organisation's workforce</p>
+    </div>
+    <div class="header-actions">
+      <!-- Export menu -->
+      <button mat-stroked-button [matMenuTriggerFor]="exportMenu">
+        <mat-icon>download</mat-icon>
+        Export
+      </button>
+      <mat-menu #exportMenu="matMenu">
+        <button mat-menu-item (click)="onExport('csv')">
+          <mat-icon>table_view</mat-icon> Export as CSV
+        </button>
+        <button mat-menu-item (click)="onExport('xlsx')">
+          <mat-icon>grid_on</mat-icon> Export as Excel
+        </button>
+      </mat-menu>
+
+      @if (authService.hasRole('admin', 'hr-manager')) {
+        <button mat-raised-button color="primary" routerLink="/employees/new">
+          <mat-icon>person_add</mat-icon>
+          Add Employee
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <mat-card class="filter-card">
+    <mat-card-content>
+      <div class="filters-row">
+        <!-- Search -->
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Search employees</mat-label>
+          <input matInput [formControl]="searchControl" placeholder="Name, email, ID…" />
+          <mat-icon matPrefix>search</mat-icon>
+          @if (searchControl.value) {
+            <button mat-icon-button matSuffix (click)="searchControl.setValue('')">
+              <mat-icon>clear</mat-icon>
+            </button>
+          }
+        </mat-form-field>
+
+        <!-- Department filter -->
+        <mat-form-field appearance="outline">
+          <mat-label>Department</mat-label>
+          <mat-select [formControl]="departmentControl" (selectionChange)="onFilterChange()">
+            <mat-option value="">All departments</mat-option>
+            @for (dept of departments; track dept.id) {
+              <mat-option [value]="dept.id">{{ dept.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <!-- Status filter -->
+        <mat-form-field appearance="outline">
+          <mat-label>Status</mat-label>
+          <mat-select [formControl]="statusControl" (selectionChange)="onFilterChange()">
+            <mat-option value="">All statuses</mat-option>
+            @for (opt of statusOptions; track opt.value) {
+              <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        @if (hasActiveFilters) {
+          <button mat-icon-button matTooltip="Clear filters" (click)="clearFilters()">
+            <mat-icon>filter_list_off</mat-icon>
+          </button>
+        }
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Data table -->
+  <div class="table-container">
+    @if (isLoading) {
+      <app-loading-spinner message="Loading employees…"></app-loading-spinner>
+    } @else {
+      <table
+        mat-table
+        [dataSource]="dataSource"
+        matSort
+        (matSortChange)="onSortChange($event)"
+        class="employees-table"
+        aria-label="Employees table"
+      >
+        <!-- Avatar column -->
+        <ng-container matColumnDef="avatar">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let employee">
+            @if (employee.avatarUrl) {
+              <img [src]="employee.avatarUrl" [alt]="employee.firstName" class="table-avatar" />
+            } @else {
+              <div class="table-avatar-initials">{{ getInitials(employee) }}</div>
+            }
+          </td>
+        </ng-container>
+
+        <!-- Employee ID -->
+        <ng-container matColumnDef="employeeId">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>ID</th>
+          <td mat-cell *matCellDef="let employee">
+            <span class="emp-id">{{ employee.employeeId }}</span>
+          </td>
+        </ng-container>
+
+        <!-- Name -->
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="lastName">Name</th>
+          <td mat-cell *matCellDef="let employee">
+            <div class="employee-name">
+              {{ employee.firstName }} {{ employee.lastName }}
+            </div>
+            <div class="employee-email text-muted">{{ employee.email }}</div>
+          </td>
+        </ng-container>
+
+        <!-- Job title -->
+        <ng-container matColumnDef="jobTitle">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Job Title</th>
+          <td mat-cell *matCellDef="let employee">{{ employee.jobTitle }}</td>
+        </ng-container>
+
+        <!-- Department -->
+        <ng-container matColumnDef="department">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Department</th>
+          <td mat-cell *matCellDef="let employee">{{ employee.department }}</td>
+        </ng-container>
+
+        <!-- Status -->
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+          <td mat-cell *matCellDef="let employee">
+            <span class="status-badge" [class]="employee.status">
+              {{ employee.status | titlecase }}
+            </span>
+          </td>
+        </ng-container>
+
+        <!-- Employment type -->
+        <ng-container matColumnDef="employmentType">
+          <th mat-header-cell *matHeaderCellDef>Type</th>
+          <td mat-cell *matCellDef="let employee">{{ employee.employmentType | titlecase }}</td>
+        </ng-container>
+
+        <!-- Hire date -->
+        <ng-container matColumnDef="hireDate">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Hire Date</th>
+          <td mat-cell *matCellDef="let employee">
+            {{ employee.hireDate | date:'mediumDate' }}
+          </td>
+        </ng-container>
+
+        <!-- Actions -->
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let employee" (click)="$event.stopPropagation()">
+            <button mat-icon-button [matMenuTriggerFor]="rowMenu" matTooltip="Actions">
+              <mat-icon>more_vert</mat-icon>
+            </button>
+            <mat-menu #rowMenu="matMenu">
+              <button mat-menu-item [routerLink]="['/employees', employee.id]">
+                <mat-icon>visibility</mat-icon> View
+              </button>
+              @if (authService.hasRole('admin', 'hr-manager', 'manager')) {
+                <button mat-menu-item [routerLink]="['/employees', employee.id, 'edit']">
+                  <mat-icon>edit</mat-icon> Edit
+                </button>
+              }
+              @if (authService.hasRole('admin', 'hr-manager')) {
+                <mat-divider></mat-divider>
+                <button mat-menu-item class="delete-item" (click)="onDeleteEmployee(employee, $event)">
+                  <mat-icon>delete</mat-icon> Delete
+                </button>
+              }
+            </mat-menu>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+        <tr
+          mat-row
+          *matRowDef="let row; columns: displayedColumns"
+          (click)="onRowClick(row)"
+          class="employee-row"
+        ></tr>
+
+        <!-- Empty state -->
+        <tr class="mat-row" *matNoDataRow>
+          <td class="mat-cell empty-state" [attr.colspan]="displayedColumns.length">
+            <mat-icon>search_off</mat-icon>
+            <p>No employees found</p>
+            @if (hasActiveFilters) {
+              <button mat-button (click)="clearFilters()">Clear filters</button>
+            }
+          </td>
+        </tr>
+      </table>
+
+      <mat-paginator
+        [length]="totalRecords"
+        [pageSize]="10"
+        [pageSizeOptions]="[10, 25, 50, 100]"
+        (page)="onPageChange($event)"
+        aria-label="Employees pagination"
+      ></mat-paginator>
+    }
+  </div>
+</div>

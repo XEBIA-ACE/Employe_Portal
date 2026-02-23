@@ -1,5 +1,5 @@
-// Karma configuration for unit tests
-// https://karma-runner.github.io/
+// Karma configuration
+// https://karma-runner.github.io/6.4/config/configuration-file.html
 
 module.exports = function (config) {
   config.set({
@@ -10,17 +10,17 @@ module.exports = function (config) {
       require('karma-chrome-launcher'),
       require('karma-jasmine-html-reporter'),
       require('karma-coverage'),
-      require('@angular-devkit/build-angular/plugins/karma')
+      require('@angular-devkit/build-angular/plugins/karma'),
     ],
     client: {
       jasmine: {
-        // Randomize test execution order to detect order-dependent tests
-        random: true
+        // Additional Jasmine configuration: https://jasmine.github.io/api/edge/Configuration
+        // forbidDuplicateNames: true,
       },
-      clearContext: false // Keep Jasmine Spec Runner output in browser
+      clearContext: false, // leave Jasmine Spec Runner output visible in browser
     },
     jasmineHtmlReporter: {
-      suppressAll: true // Remove duplicates in output
+      suppressAll: true, // removes the duplicated traces
     },
     coverageReporter: {
       dir: require('path').join(__dirname, './coverage/employee-portal'),
@@ -28,11 +28,11 @@ module.exports = function (config) {
       reporters: [
         { type: 'html' },
         { type: 'text-summary' },
-        { type: 'lcovonly' }
-      ]
+        { type: 'lcov' },
+      ],
     },
     reporters: ['progress', 'kjhtml'],
     browsers: ['Chrome'],
-    restartOnFileChange: true
+    restartOnFileChange: true,
   });
 };

@@ -1,41 +1,27 @@
-export type EmploymentStatus = 'active' | 'inactive' | 'on_leave' | 'terminated';
-export type EmploymentType = 'full_time' | 'part_time' | 'contract' | 'intern';
-export type Gender = 'male' | 'female' | 'other' | 'prefer_not_to_say';
+/**
+ * Employee domain models
+ */
 
-export interface Employee {
+export type EmployeeStatus = 'active' | 'inactive' | 'on-leave' | 'terminated';
+export type EmploymentType = 'full-time' | 'part-time' | 'contract' | 'intern';
+export type Gender = 'male' | 'female' | 'non-binary' | 'prefer-not-to-say';
+
+export interface Department {
   id: string;
-  employeeId: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone?: string;
-  dateOfBirth?: Date;
-  gender?: Gender;
-  address?: Address;
-  departmentId: string;
-  departmentName?: string;
-  positionId: string;
-  positionTitle?: string;
+  name: string;
+  code: string;
   managerId?: string;
-  managerName?: string;
-  employmentType: EmploymentType;
-  employmentStatus: EmploymentStatus;
-  startDate: Date;
-  endDate?: Date;
-  salary?: number;
-  avatarUrl?: string;
-  emergencyContact?: EmergencyContact;
-  skills?: string[];
-  createdAt: Date;
-  updatedAt: Date;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Address {
   street: string;
   city: string;
   state: string;
-  postalCode: string;
   country: string;
+  postalCode: string;
 }
 
 export interface EmergencyContact {
@@ -45,34 +31,88 @@ export interface EmergencyContact {
   email?: string;
 }
 
-export interface CreateEmployeeRequest {
+export interface Employee {
+  id: string;
+  employeeId: string; // Human-readable ID (e.g., EMP-001)
   firstName: string;
   lastName: string;
   email: string;
   phone?: string;
-  dateOfBirth?: Date;
+  dateOfBirth?: string;
   gender?: Gender;
-  departmentId: string;
-  positionId: string;
-  managerId?: string;
-  employmentType: EmploymentType;
-  startDate: Date;
-  salary?: number;
-}
+  avatarUrl?: string;
 
-export interface UpdateEmployeeRequest extends Partial<CreateEmployeeRequest> {
-  employmentStatus?: EmploymentStatus;
+  // Employment details
+  jobTitle: string;
+  departmentId: string;
+  department?: Department;
+  managerId?: string;
+  manager?: Pick<Employee, 'id' | 'firstName' | 'lastName' | 'email'>;
+  employmentType: EmploymentType;
+  status: EmployeeStatus;
+  hireDate: string;
+  terminationDate?: string;
+  salary?: number;
+  currency?: string;
+
+  // Contact
   address?: Address;
   emergencyContact?: EmergencyContact;
-  skills?: string[];
+
+  // System fields
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EmployeeListItem {
+  id: string;
+  employeeId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  jobTitle: string;
+  department: string;
+  departmentId: string;
+  status: EmployeeStatus;
+  employmentType: EmploymentType;
+  hireDate: string;
+  avatarUrl?: string;
+}
+
+/** Form model for creating / updating an employee */
+export interface EmployeeFormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  dateOfBirth?: string;
+  gender?: Gender;
+  jobTitle: string;
+  departmentId: string;
+  managerId?: string;
+  employmentType: EmploymentType;
+  status: EmployeeStatus;
+  hireDate: string;
+  salary?: number;
+  currency?: string;
+  address?: Address;
+  emergencyContact?: EmergencyContact;
 }
 
 export interface EmployeeFilter {
   search?: string;
   departmentId?: string;
-  employmentStatus?: EmploymentStatus;
+  status?: EmployeeStatus;
   employmentType?: EmploymentType;
   managerId?: string;
-  startDateFrom?: Date;
-  startDateTo?: Date;
+}
+
+export interface EmployeeStats {
+  total: number;
+  active: number;
+  inactive: number;
+  onLeave: number;
+  newThisMonth: number;
+  byDepartment: Array<{ department: string; count: number }>;
+  byEmploymentType: Array<{ type: EmploymentType; count: number }>;
 }

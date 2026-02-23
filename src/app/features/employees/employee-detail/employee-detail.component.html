@@ -1,0 +1,201 @@
+<div class="page-container">
+  @if (isLoading) {
+    <app-loading-spinner message="Loading employee details…"></app-loading-spinner>
+  } @else if (employee) {
+
+    <!-- Back navigation + actions -->
+    <div class="page-nav">
+      <button mat-icon-button routerLink="/employees" matTooltip="Back to employees">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <span class="breadcrumb">
+        <a routerLink="/employees">Employees</a> /
+        {{ employee.firstName }} {{ employee.lastName }}
+      </span>
+      <span class="flex-1"></span>
+      @if (authService.hasRole('admin', 'hr-manager', 'manager')) {
+        <button mat-stroked-button (click)="onEdit()">
+          <mat-icon>edit</mat-icon> Edit
+        </button>
+      }
+      @if (authService.hasRole('admin', 'hr-manager')) {
+        <button mat-stroked-button color="warn" (click)="onDelete()">
+          <mat-icon>delete</mat-icon> Delete
+        </button>
+      }
+    </div>
+
+    <!-- Profile header -->
+    <mat-card class="profile-header-card">
+      <mat-card-content>
+        <div class="profile-header">
+          <!-- Avatar -->
+          <div class="avatar-wrapper">
+            @if (employee.avatarUrl) {
+              <img [src]="employee.avatarUrl" [alt]="employee.firstName" class="profile-avatar" />
+            } @else {
+              <div class="profile-avatar-initials">{{ getInitials() }}</div>
+            }
+            <span class="status-badge" [class]="employee.status">
+              {{ employee.status | titlecase }}
+            </span>
+          </div>
+
+          <!-- Basic info -->
+          <div class="profile-info">
+            <h2 class="employee-name">
+              {{ employee.firstName }} {{ employee.lastName }}
+            </h2>
+            <p class="job-title">{{ employee.jobTitle }}</p>
+            <p class="department text-muted">
+              <mat-icon>corporate_fare</mat-icon>
+              {{ employee.department?.name ?? '—' }}
+            </p>
+            <div class="chips-row">
+              <mat-chip>{{ employee.employeeId }}</mat-chip>
+              <mat-chip>{{ employee.employmentType | titlecase }}</mat-chip>
+            </div>
+          </div>
+
+          <!-- Contact quick info -->
+          <div class="profile-contact">
+            <div class="contact-item">
+              <mat-icon>email</mat-icon>
+              <a [href]="'mailto:' + employee.email">{{ employee.email }}</a>
+            </div>
+            @if (employee.phone) {
+              <div class="contact-item">
+                <mat-icon>phone</mat-icon>
+                <a [href]="'tel:' + employee.phone">{{ employee.phone }}</a>
+              </div>
+            }
+            <div class="contact-item">
+              <mat-icon>calendar_today</mat-icon>
+              <span>Hired {{ employee.hireDate | date:'longDate' }}</span>
+            </div>
+            @if (employee.manager) {
+              <div class="contact-item">
+                <mat-icon>manage_accounts</mat-icon>
+                <a [routerLink]="['/employees', employee.manager.id]">
+                  {{ employee.manager.firstName }} {{ employee.manager.lastName }}
+                </a>
+              </div>
+            }
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Detail tabs -->
+    <mat-tab-group animationDuration="200ms">
+
+      <!-- Personal info tab -->
+      <mat-tab label="Personal Info">
+        <div class="tab-content">
+          <mat-card>
+            <mat-card-header>
+              <mat-card-title>Personal Information</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <span class="detail-label">Date of Birth</span>
+                  <span class="detail-value">{{ (employee.dateOfBirth | date:'longDate') ?? '—' }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Gender</span>
+                  <span class="detail-value">{{ employee.gender ?? '—' | titlecase }}</span>
+                </div>
+                <div class="detail-item full-span">
+                  <span class="detail-label">Address</span>
+                  <span class="detail-value">{{ formatAddress() }}</span>
+                </div>
+              </div>
+
+              @if (employee.emergencyContact) {
+                <mat-divider class="section-divider"></mat-divider>
+                <h4>Emergency Contact</h4>
+                <div class="detail-grid">
+                  <div class="detail-item">
+                    <span class="detail-label">Name</span>
+                    <span class="detail-value">{{ employee.emergencyContact.name }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Relationship</span>
+                    <span class="detail-value">{{ employee.emergencyContact.relationship }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Phone</span>
+                    <span class="detail-value">{{ employee.emergencyContact.phone }}</span>
+                  </div>
+                  @if (employee.emergencyContact.email) {
+                    <div class="detail-item">
+                      <span class="detail-label">Email</span>
+                      <span class="detail-value">{{ employee.emergencyContact.email }}</span>
+                    </div>
+                  }
+                </div>
+              }
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+
+      <!-- Employment tab -->
+      <mat-tab label="Employment">
+        <div class="tab-content">
+          <mat-card>
+            <mat-card-header>
+              <mat-card-title>Employment Details</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <span class="detail-label">Employee ID</span>
+                  <span class="detail-value mono">{{ employee.employeeId }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Job Title</span>
+                  <span class="detail-value">{{ employee.jobTitle }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Department</span>
+                  <span class="detail-value">{{ employee.department?.name ?? '—' }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Employment Type</span>
+                  <span class="detail-value">{{ employee.employmentType | titlecase }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Status</span>
+                  <span class="status-badge" [class]="employee.status">
+                    {{ employee.status | titlecase }}
+                  </span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Hire Date</span>
+                  <span class="detail-value">{{ employee.hireDate | date:'longDate' }}</span>
+                </div>
+                @if (employee.terminationDate) {
+                  <div class="detail-item">
+                    <span class="detail-label">Termination Date</span>
+                    <span class="detail-value">{{ employee.terminationDate | date:'longDate' }}</span>
+                  </div>
+                }
+                @if (authService.hasRole('admin', 'hr-manager') && employee.salary) {
+                  <div class="detail-item">
+                    <span class="detail-label">Salary</span>
+                    <span class="detail-value">
+                      {{ employee.salary | currency:employee.currency ?? 'USD' }}
+                    </span>
+                  </div>
+                }
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+
+    </mat-tab-group>
+  }
+</div>

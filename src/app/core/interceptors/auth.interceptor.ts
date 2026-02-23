@@ -1,50 +1,45 @@
 import { HttpInterceptorFn, HttpRequest, HttpHandlerFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { throwError, catchError, switchMap } from 'rxjs';
-import { AuthService } from '@core/services/auth.service';
-import { LoggerService } from '@core/services/logger.service';
+import { catchError, switchMap, throwError } from 'rxjs';
+import { AuthService } from '../services/auth.service';
 
 /**
- * Attaches the Bearer access token to every outgoing API request.
- * On 401, attempts a token refresh once; on second 401, clears session.
+ * Functional HTTP interceptor that:
+ * 1. Attaches the JWT access token to every outgoing API request.
+ * 2. Attempts a single token refresh on 401 responses and retries the request.
+ * 3. Logs out the user if the refresh also fails.
  */
 export const authInterceptor: HttpInterceptorFn = (
   req: HttpRequest<unknown>,
-  next: HttpHandlerFn
+  next: HttpHandlerFn,
 ) => {
   const authService = inject(AuthService);
-  const logger = inject(LoggerService);
-
-  // Skip auth header for login/refresh endpoints
-  if (req.url.includes('/auth/login') || req.url.includes('/auth/refresh')) {
-    return next(req);
-  }
-
   const token = authService.getAccessToken();
-  const authReq = token ? addToken(req, token) : req;
+
+  const authReq = token ? addBearerToken(req, token) : req;
 
   return next(authReq).pipe(
     catchError((error: HttpErrorResponse) => {
-      if (error.status === 401 && token) {
-        // Token expired — attempt silent refresh
-        logger.debug('Access token expired, attempting refresh');
+      if (error.status === 401 && !req.url.includes('/auth/')) {
+        // Attempt token refresh
         return authService.refreshToken().pipe(
           switchMap((response) => {
-            const newToken = response.data.accessToken;
-            return next(addToken(req, newToken));
+            const retried = addBearerToken(req, response.accessToken);
+            return next(retried);
           }),
           catchError((refreshError) => {
-            logger.error('Token refresh failed, logging out', refreshError);
             authService.logout();
             return throwError(() => refreshError);
-          })
+          }),
         );
       }
       return throwError(() => error);
-    })
+    }),
   );
 };
 
-function addToken(req: HttpRequest<unknown>, token: string): HttpRequest<unknown> {
-  return req.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
+function addBearerToken(req: HttpRequest<unknown>, token: string): HttpRequest<unknown> {
+  return req.clone({
+    setHeaders: { Authorization: `Bearer ${token}` },
+  });
 }

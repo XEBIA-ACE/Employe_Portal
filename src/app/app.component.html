@@ -1,0 +1,37 @@
+<!-- Auth pages: no layout shell -->
+@if (!authService.isAuthenticated()) {
+  <router-outlet></router-outlet>
+} @else {
+  <!-- Authenticated layout with header + sidebar + content -->
+  <mat-sidenav-container class="app-container" autosize>
+
+    <!-- Sidebar -->
+    <mat-sidenav
+      #sidenav
+      [mode]="isMobile ? 'over' : 'side'"
+      [opened]="!isMobile"
+      class="app-sidenav"
+      fixedInViewport="true"
+      [fixedTopGap]="64"
+    >
+      <app-sidebar></app-sidebar>
+    </mat-sidenav>
+
+    <!-- Main content area -->
+    <mat-sidenav-content class="app-content">
+      <!-- Fixed top header -->
+      <app-header (sidenavToggle)="onSidenavToggle()"></app-header>
+
+      <!-- Page content -->
+      <main class="main-content">
+        <router-outlet></router-outlet>
+      </main>
+
+      <!-- Footer -->
+      <footer class="app-footer">
+        <span>&copy; {{ currentYear }} Employee Portal. All rights reserved.</span>
+      </footer>
+    </mat-sidenav-content>
+
+  </mat-sidenav-container>
+}

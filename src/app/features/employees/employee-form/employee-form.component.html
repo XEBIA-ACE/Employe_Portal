@@ -1,0 +1,250 @@
+<div class="page-container">
+  <!-- Page header -->
+  <div class="page-nav">
+    <button mat-icon-button (click)="onCancel()" matTooltip="Go back">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <h2>{{ isEditMode ? 'Edit Employee' : 'Add New Employee' }}</h2>
+  </div>
+
+  @if (isLoadingEmployee) {
+    <app-loading-spinner message="Loading employee data…"></app-loading-spinner>
+  } @else {
+    <mat-stepper orientation="horizontal" [linear]="true" #stepper>
+
+      <!-- Step 1: Personal Info -->
+      <mat-step [stepControl]="personalForm" label="Personal Info">
+        <mat-card class="step-card">
+          <mat-card-content>
+            <form [formGroup]="personalForm" novalidate>
+              <div class="form-row">
+                <mat-form-field appearance="outline">
+                  <mat-label>First Name</mat-label>
+                  <input matInput formControlName="firstName" />
+                  @if (personalForm.get('firstName')?.hasError('required') && personalForm.get('firstName')?.touched) {
+                    <mat-error>First name is required</mat-error>
+                  }
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Last Name</mat-label>
+                  <input matInput formControlName="lastName" />
+                  @if (personalForm.get('lastName')?.hasError('required') && personalForm.get('lastName')?.touched) {
+                    <mat-error>Last name is required</mat-error>
+                  }
+                </mat-form-field>
+              </div>
+
+              <div class="form-row">
+                <mat-form-field appearance="outline">
+                  <mat-label>Email Address</mat-label>
+                  <input matInput type="email" formControlName="email" />
+                  <mat-icon matPrefix>email</mat-icon>
+                  @if (personalForm.get('email')?.hasError('required') && personalForm.get('email')?.touched) {
+                    <mat-error>Email is required</mat-error>
+                  } @else if (personalForm.get('email')?.hasError('email') && personalForm.get('email')?.touched) {
+                    <mat-error>Enter a valid email address</mat-error>
+                  }
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Phone Number</mat-label>
+                  <input matInput formControlName="phone" type="tel" />
+                  <mat-icon matPrefix>phone</mat-icon>
+                </mat-form-field>
+              </div>
+
+              <div class="form-row">
+                <mat-form-field appearance="outline">
+                  <mat-label>Date of Birth</mat-label>
+                  <input matInput [matDatepicker]="dobPicker" formControlName="dateOfBirth" />
+                  <mat-datepicker-toggle matIconSuffix [for]="dobPicker"></mat-datepicker-toggle>
+                  <mat-datepicker #dobPicker></mat-datepicker>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Gender</mat-label>
+                  <mat-select formControlName="gender">
+                    <mat-option value="">Prefer not to say</mat-option>
+                    @for (opt of genderOptions; track opt.value) {
+                      <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              </div>
+            </form>
+          </mat-card-content>
+          <mat-card-actions align="end">
+            <button mat-button (click)="onCancel()">Cancel</button>
+            <button mat-raised-button color="primary" matStepperNext>
+              Next <mat-icon>arrow_forward</mat-icon>
+            </button>
+          </mat-card-actions>
+        </mat-card>
+      </mat-step>
+
+      <!-- Step 2: Employment Info -->
+      <mat-step [stepControl]="employmentForm" label="Employment">
+        <mat-card class="step-card">
+          <mat-card-content>
+            <form [formGroup]="employmentForm" novalidate>
+              <div class="form-row">
+                <mat-form-field appearance="outline">
+                  <mat-label>Job Title</mat-label>
+                  <input matInput formControlName="jobTitle" />
+                  @if (employmentForm.get('jobTitle')?.hasError('required') && employmentForm.get('jobTitle')?.touched) {
+                    <mat-error>Job title is required</mat-error>
+                  }
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Department</mat-label>
+                  <mat-select formControlName="departmentId">
+                    @for (dept of departments; track dept.id) {
+                      <mat-option [value]="dept.id">{{ dept.name }}</mat-option>
+                    }
+                  </mat-select>
+                  @if (employmentForm.get('departmentId')?.hasError('required') && employmentForm.get('departmentId')?.touched) {
+                    <mat-error>Department is required</mat-error>
+                  }
+                </mat-form-field>
+              </div>
+
+              <div class="form-row">
+                <mat-form-field appearance="outline">
+                  <mat-label>Employment Type</mat-label>
+                  <mat-select formControlName="employmentType">
+                    @for (type of employmentTypes; track type.value) {
+                      <mat-option [value]="type.value">{{ type.label }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Status</mat-label>
+                  <mat-select formControlName="status">
+                    @for (opt of statusOptions; track opt.value) {
+                      <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              </div>
+
+              <div class="form-row">
+                <mat-form-field appearance="outline">
+                  <mat-label>Hire Date</mat-label>
+                  <input matInput [matDatepicker]="hirePicker" formControlName="hireDate" />
+                  <mat-datepicker-toggle matIconSuffix [for]="hirePicker"></mat-datepicker-toggle>
+                  <mat-datepicker #hirePicker></mat-datepicker>
+                  @if (employmentForm.get('hireDate')?.hasError('required') && employmentForm.get('hireDate')?.touched) {
+                    <mat-error>Hire date is required</mat-error>
+                  }
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Salary (optional)</mat-label>
+                  <input matInput type="number" formControlName="salary" />
+                  <mat-select matSuffix formControlName="currency" style="width: 70px">
+                    <mat-option value="USD">USD</mat-option>
+                    <mat-option value="EUR">EUR</mat-option>
+                    <mat-option value="GBP">GBP</mat-option>
+                    <mat-option value="INR">INR</mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+            </form>
+          </mat-card-content>
+          <mat-card-actions align="end">
+            <button mat-button matStepperPrevious>
+              <mat-icon>arrow_back</mat-icon> Back
+            </button>
+            <button mat-raised-button color="primary" matStepperNext>
+              Next <mat-icon>arrow_forward</mat-icon>
+            </button>
+          </mat-card-actions>
+        </mat-card>
+      </mat-step>
+
+      <!-- Step 3: Contact & Emergency -->
+      <mat-step label="Contact Info">
+        <mat-card class="step-card">
+          <mat-card-content>
+            <form [formGroup]="contactForm" novalidate>
+              <h4>Address (optional)</h4>
+              <div class="form-row">
+                <mat-form-field appearance="outline" class="full-span">
+                  <mat-label>Street Address</mat-label>
+                  <input matInput formControlName="street" />
+                </mat-form-field>
+              </div>
+              <div class="form-row">
+                <mat-form-field appearance="outline">
+                  <mat-label>City</mat-label>
+                  <input matInput formControlName="city" />
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>State / Province</mat-label>
+                  <input matInput formControlName="state" />
+                </mat-form-field>
+              </div>
+              <div class="form-row">
+                <mat-form-field appearance="outline">
+                  <mat-label>Country</mat-label>
+                  <input matInput formControlName="country" />
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Postal Code</mat-label>
+                  <input matInput formControlName="postalCode" />
+                </mat-form-field>
+              </div>
+
+              <mat-divider class="section-divider"></mat-divider>
+              <h4>Emergency Contact (optional)</h4>
+
+              <div class="form-row">
+                <mat-form-field appearance="outline">
+                  <mat-label>Contact Name</mat-label>
+                  <input matInput formControlName="ecName" />
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Relationship</mat-label>
+                  <input matInput formControlName="ecRelationship" />
+                </mat-form-field>
+              </div>
+              <div class="form-row">
+                <mat-form-field appearance="outline">
+                  <mat-label>Phone</mat-label>
+                  <input matInput formControlName="ecPhone" type="tel" />
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Email</mat-label>
+                  <input matInput formControlName="ecEmail" type="email" />
+                </mat-form-field>
+              </div>
+            </form>
+          </mat-card-content>
+          <mat-card-actions align="end">
+            <button mat-button matStepperPrevious>
+              <mat-icon>arrow_back</mat-icon> Back
+            </button>
+            <button
+              mat-raised-button
+              color="primary"
+              (click)="onSubmit()"
+              [disabled]="isLoading"
+            >
+              @if (isLoading) {
+                <mat-spinner diameter="20" color="accent"></mat-spinner>
+                <span>{{ isEditMode ? 'Saving…' : 'Creating…' }}</span>
+              } @else {
+                <mat-icon>{{ isEditMode ? 'save' : 'person_add' }}</mat-icon>
+                <span>{{ isEditMode ? 'Save Changes' : 'Create Employee' }}</span>
+              }
+            </button>
+          </mat-card-actions>
+        </mat-card>
+      </mat-step>
+
+    </mat-stepper>
+  }
+</div>

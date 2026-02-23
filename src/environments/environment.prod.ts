@@ -1,14 +1,20 @@
 export const environment = {
   production: true,
-  apiUrl: '/api/v1',
+  apiBaseUrl: '/api/v1',
+  apiTimeout: 30000,
   appName: 'Employee Portal',
   version: '1.0.0',
-  logLevel: 'error',
-  tokenKey: 'ep_access_token',
-  refreshTokenKey: 'ep_refresh_token',
-  sessionTimeout: 3600000, // 1 hour in ms
+  features: {
+    darkMode: true,
+    notifications: true,
+    reports: true,
+  },
   pagination: {
     defaultPageSize: 10,
-    pageSizeOptions: [5, 10, 25, 50]
-  }
+    maxPageSize: 100,
+  },
+  logging: {
+    level: 'error', // Only log errors in production
+    enableConsole: false,
+  },
 };

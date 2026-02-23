@@ -1,128 +1,155 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, tap, catchError, throwError, EMPTY } from 'rxjs';
-import { environment } from '@environments/environment';
-import { User, AuthUser, LoginRequest, ChangePasswordRequest } from '@core/models/user.model';
-import { ApiResponse } from '@core/models/api.model';
+import { Observable, tap, catchError, throwError } from 'rxjs';
+import { environment } from '../../../environments/environment';
+import {
+  LoginRequest,
+  LoginResponse,
+  User,
+  RegisterRequest,
+  ChangePasswordRequest,
+  UpdateProfileRequest,
+  RefreshTokenRequest,
+} from '../models/user.model';
+import { ApiResponse } from '../models/api-response.model';
 import { LoggerService } from './logger.service';
+import { NotificationService } from './notification.service';
 
+const TOKEN_KEY = 'ep_access_token';
+const REFRESH_TOKEN_KEY = 'ep_refresh_token';
+const USER_KEY = 'ep_user';
+
+/**
+ * Authentication service handling login, logout, token management,
+ * and exposing the current user state via Angular signals.
+ */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly apiUrl = `${environment.apiUrl}/auth`;
+  private readonly apiUrl = `${environment.apiBaseUrl}/auth`;
 
-  // Angular signals for reactive auth state
+  // Reactive state via Angular 17 signals
   private readonly _currentUser = signal<User | null>(this.loadUserFromStorage());
   private readonly _isLoading = signal(false);
 
   readonly currentUser = this._currentUser.asReadonly();
+  readonly isAuthenticated = computed(() => this._currentUser() !== null);
   readonly isLoading = this._isLoading.asReadonly();
-  readonly isAuthenticated = computed(() => !!this._currentUser());
-  readonly isAdmin = computed(() => this._currentUser()?.role === 'admin');
-  readonly isHrManager = computed(() =>
-    ['admin', 'hr_manager'].includes(this._currentUser()?.role ?? '')
-  );
-  readonly isManager = computed(() =>
-    ['admin', 'hr_manager', 'manager'].includes(this._currentUser()?.role ?? '')
-  );
+  readonly userRole = computed(() => this._currentUser()?.role ?? null);
 
   constructor(
     private http: HttpClient,
     private router: Router,
-    private logger: LoggerService
+    private logger: LoggerService,
+    private notification: NotificationService,
   ) {}
 
-  login(credentials: LoginRequest): Observable<ApiResponse<AuthUser>> {
+  login(credentials: LoginRequest): Observable<LoginResponse> {
     this._isLoading.set(true);
-    return this.http.post<ApiResponse<AuthUser>>(`${this.apiUrl}/login`, credentials).pipe(
+    return this.http.post<LoginResponse>(`${this.apiUrl}/login`, credentials).pipe(
       tap((response) => {
-        const { user, accessToken, refreshToken } = response.data;
-        this.storeTokens(accessToken, refreshToken);
-        this._currentUser.set(user);
-        this.logger.info('User logged in', { userId: user.id, email: user.email });
+        this.storeTokens(response.accessToken, response.refreshToken);
+        this.storeUser(response.user);
+        this._currentUser.set(response.user);
+        this._isLoading.set(false);
+        this.logger.info('User logged in', 'AuthService', { userId: response.user.id });
       }),
       catchError((error) => {
-        this.logger.error('Login failed', error);
+        this._isLoading.set(false);
+        this.logger.error('Login failed', 'AuthService', error);
         return throwError(() => error);
       }),
-      tap(() => this._isLoading.set(false))
+    );
+  }
+
+  register(data: RegisterRequest): Observable<ApiResponse<User>> {
+    this._isLoading.set(true);
+    return this.http.post<ApiResponse<User>>(`${this.apiUrl}/register`, data).pipe(
+      tap(() => this._isLoading.set(false)),
+      catchError((error) => {
+        this._isLoading.set(false);
+        return throwError(() => error);
+      }),
     );
   }
 
   logout(): void {
     const user = this._currentUser();
-    this.http.post(`${this.apiUrl}/logout`, {}).pipe(
-      catchError(() => EMPTY) // Best-effort logout call
-    ).subscribe();
-
-    this.clearSession();
-    this.logger.info('User logged out', { userId: user?.id });
+    this.clearStorage();
+    this._currentUser.set(null);
+    this.logger.info('User logged out', 'AuthService', { userId: user?.id });
     this.router.navigate(['/auth/login']);
+    this.notification.info('You have been signed out.');
   }
 
-  refreshToken(): Observable<ApiResponse<AuthUser>> {
+  refreshToken(): Observable<LoginResponse> {
     const refreshToken = this.getRefreshToken();
-    return this.http
-      .post<ApiResponse<AuthUser>>(`${this.apiUrl}/refresh`, { refreshToken })
-      .pipe(
-        tap((response) => {
-          const { accessToken, refreshToken: newRefreshToken } = response.data;
-          this.storeTokens(accessToken, newRefreshToken);
-        }),
-        catchError((error) => {
-          this.clearSession();
-          this.router.navigate(['/auth/login']);
-          return throwError(() => error);
-        })
-      );
-  }
+    if (!refreshToken) {
+      this.logout();
+      return throwError(() => new Error('No refresh token available'));
+    }
 
-  changePassword(payload: ChangePasswordRequest): Observable<ApiResponse<void>> {
-    return this.http.post<ApiResponse<void>>(`${this.apiUrl}/change-password`, payload).pipe(
-      tap(() => this.logger.info('Password changed')),
+    const payload: RefreshTokenRequest = { refreshToken };
+    return this.http.post<LoginResponse>(`${this.apiUrl}/refresh`, payload).pipe(
+      tap((response) => {
+        this.storeTokens(response.accessToken, response.refreshToken);
+        this.storeUser(response.user);
+        this._currentUser.set(response.user);
+      }),
       catchError((error) => {
-        this.logger.error('Password change failed', error);
+        this.logout();
         return throwError(() => error);
-      })
+      }),
     );
   }
 
-  getAccessToken(): string | null {
-    return localStorage.getItem(environment.tokenKey);
+  changePassword(payload: ChangePasswordRequest): Observable<ApiResponse<void>> {
+    return this.http.post<ApiResponse<void>>(`${this.apiUrl}/change-password`, payload);
   }
 
-  getRefreshToken(): string | null {
-    return localStorage.getItem(environment.refreshTokenKey);
+  updateProfile(payload: UpdateProfileRequest): Observable<ApiResponse<User>> {
+    return this.http.put<ApiResponse<User>>(`${this.apiUrl}/profile`, payload).pipe(
+      tap((response) => {
+        this.storeUser(response.data);
+        this._currentUser.set(response.data);
+      }),
+    );
   }
 
-  hasRole(roles: string[]): boolean {
+  hasRole(...roles: string[]): boolean {
     const userRole = this._currentUser()?.role;
     return userRole ? roles.includes(userRole) : false;
   }
 
-  private storeTokens(accessToken: string, refreshToken: string): void {
-    localStorage.setItem(environment.tokenKey, accessToken);
-    localStorage.setItem(environment.refreshTokenKey, refreshToken);
-    // Also persist user from token to survive page refresh
-    const user = this._currentUser();
-    if (user) {
-      localStorage.setItem('ep_user', JSON.stringify(user));
-    }
+  getAccessToken(): string | null {
+    return localStorage.getItem(TOKEN_KEY);
   }
 
-  private clearSession(): void {
-    localStorage.removeItem(environment.tokenKey);
-    localStorage.removeItem(environment.refreshTokenKey);
-    localStorage.removeItem('ep_user');
-    this._currentUser.set(null);
+  getRefreshToken(): string | null {
+    return localStorage.getItem(REFRESH_TOKEN_KEY);
+  }
+
+  private storeTokens(accessToken: string, refreshToken: string): void {
+    localStorage.setItem(TOKEN_KEY, accessToken);
+    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  }
+
+  private storeUser(user: User): void {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
   }
 
   private loadUserFromStorage(): User | null {
     try {
-      const raw = localStorage.getItem('ep_user');
+      const raw = localStorage.getItem(USER_KEY);
       return raw ? (JSON.parse(raw) as User) : null;
     } catch {
       return null;
     }
+  }
+
+  private clearStorage(): void {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
   }
 }

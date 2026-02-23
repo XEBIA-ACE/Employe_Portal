@@ -1,14 +1,20 @@
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:3000/api/v1',
+  apiBaseUrl: 'http://localhost:3000/api/v1',
+  apiTimeout: 30000,
   appName: 'Employee Portal',
   version: '1.0.0',
-  logLevel: 'debug',
-  tokenKey: 'ep_access_token',
-  refreshTokenKey: 'ep_refresh_token',
-  sessionTimeout: 3600000, // 1 hour in ms
+  features: {
+    darkMode: true,
+    notifications: true,
+    reports: true,
+  },
   pagination: {
     defaultPageSize: 10,
-    pageSizeOptions: [5, 10, 25, 50]
-  }
+    maxPageSize: 100,
+  },
+  logging: {
+    level: 'debug', // 'debug' | 'info' | 'warn' | 'error'
+    enableConsole: true,
+  },
 };

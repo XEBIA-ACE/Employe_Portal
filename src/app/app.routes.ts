@@ -1,57 +1,112 @@
 import { Routes } from '@angular/router';
-import { authGuard } from '@core/guards/auth.guard';
-import { MainLayoutComponent } from '@shared/components/layout/main-layout/main-layout.component';
+import { authGuard, guestGuard } from './core/guards/auth.guard';
 
-export const APP_ROUTES: Routes = [
-  // Auth routes (no layout wrapper)
-  {
-    path: 'auth',
-    loadChildren: () =>
-      import('./features/auth/auth.routes').then((m) => m.AUTH_ROUTES)
-  },
-
-  // Protected routes (wrapped in main layout)
+export const routes: Routes = [
+  // Default redirect
   {
     path: '',
-    component: MainLayoutComponent,
+    redirectTo: 'dashboard',
+    pathMatch: 'full',
+  },
+
+  // Auth routes (only for unauthenticated users)
+  {
+    path: 'auth',
+    canActivate: [guestGuard],
+    children: [
+      {
+        path: 'login',
+        loadComponent: () =>
+          import('./features/auth/login/login.component').then((m) => m.LoginComponent),
+        title: 'Sign In — Employee Portal',
+      },
+      {
+        path: 'register',
+        loadComponent: () =>
+          import('./features/auth/register/register.component').then((m) => m.RegisterComponent),
+        title: 'Register — Employee Portal',
+      },
+      {
+        path: '',
+        redirectTo: 'login',
+        pathMatch: 'full',
+      },
+    ],
+  },
+
+  // Protected routes (require authentication)
+  {
+    path: '',
+    component: undefined, // Shell layout is set in AppComponent
     canActivate: [authGuard],
     children: [
       {
         path: 'dashboard',
         loadComponent: () =>
-          import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent)
+          import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
+        title: 'Dashboard — Employee Portal',
       },
       {
         path: 'employees',
-        loadChildren: () =>
-          import('./features/employees/employees.routes').then((m) => m.EMPLOYEE_ROUTES)
+        children: [
+          {
+            path: '',
+            loadComponent: () =>
+              import('./features/employees/employee-list/employee-list.component').then(
+                (m) => m.EmployeeListComponent,
+              ),
+            title: 'Employees — Employee Portal',
+          },
+          {
+            path: 'new',
+            loadComponent: () =>
+              import('./features/employees/employee-form/employee-form.component').then(
+                (m) => m.EmployeeFormComponent,
+              ),
+            title: 'New Employee — Employee Portal',
+            data: { roles: ['admin', 'hr-manager'] },
+            canActivate: [authGuard],
+          },
+          {
+            path: ':id',
+            loadComponent: () =>
+              import('./features/employees/employee-detail/employee-detail.component').then(
+                (m) => m.EmployeeDetailComponent,
+              ),
+            title: 'Employee Detail — Employee Portal',
+          },
+          {
+            path: ':id/edit',
+            loadComponent: () =>
+              import('./features/employees/employee-form/employee-form.component').then(
+                (m) => m.EmployeeFormComponent,
+              ),
+            title: 'Edit Employee — Employee Portal',
+            data: { roles: ['admin', 'hr-manager', 'manager'] },
+            canActivate: [authGuard],
+          },
+        ],
       },
       {
-        path: 'departments',
-        loadChildren: () =>
-          import('./features/departments/departments.routes').then((m) => m.DEPARTMENT_ROUTES)
+        path: 'profile',
+        loadComponent: () =>
+          import('./features/profile/profile.component').then((m) => m.ProfileComponent),
+        title: 'My Profile — Employee Portal',
       },
       {
-        path: 'attendance',
-        loadChildren: () =>
-          import('./features/attendance/attendance.routes').then((m) => m.ATTENDANCE_ROUTES)
+        path: 'reports',
+        loadComponent: () =>
+          import('./features/reports/reports.component').then((m) => m.ReportsComponent),
+        title: 'Reports — Employee Portal',
+        data: { roles: ['admin', 'hr-manager', 'manager'] },
+        canActivate: [authGuard],
       },
-      {
-        path: 'leave',
-        loadChildren: () =>
-          import('./features/leave/leave.routes').then((m) => m.LEAVE_ROUTES)
-      },
-      {
-        path: '',
-        redirectTo: 'dashboard',
-        pathMatch: 'full'
-      }
-    ]
+    ],
   },
 
-  // Catch-all redirect
+  // Catch-all 404
   {
     path: '**',
-    redirectTo: 'dashboard'
-  }
+    redirectTo: 'dashboard',
+  },
 ];

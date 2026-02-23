@@ -1,0 +1,139 @@
+<div class="page-container">
+  <div class="section-header">
+    <div>
+      <h2>Reports</h2>
+      <p class="text-muted">Workforce analytics and data exports</p>
+    </div>
+    <!-- Export controls -->
+    <div class="export-controls">
+      <mat-form-field appearance="outline" class="format-select">
+        <mat-label>Format</mat-label>
+        <mat-select [(ngModel)]="selectedFormat">
+          <mat-option value="csv">CSV</mat-option>
+          <mat-option value="xlsx">Excel (XLSX)</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <button mat-raised-button color="primary" (click)="onExport()">
+        <mat-icon>download</mat-icon>
+        Export Report
+      </button>
+    </div>
+  </div>
+
+  @if (isLoading) {
+    <app-loading-spinner message="Loading analytics…"></app-loading-spinner>
+  } @else if (stats) {
+
+    <!-- Summary metrics -->
+    <div class="metrics-grid">
+      <mat-card class="metric-card">
+        <mat-card-content>
+          <mat-icon class="metric-icon primary">people</mat-icon>
+          <p class="metric-value">{{ stats.total }}</p>
+          <p class="metric-label">Total Employees</p>
+        </mat-card-content>
+      </mat-card>
+      <mat-card class="metric-card">
+        <mat-card-content>
+          <mat-icon class="metric-icon success">check_circle</mat-icon>
+          <p class="metric-value">{{ stats.active }}</p>
+          <p class="metric-label">Active</p>
+          <p class="metric-pct">{{ getPercentage(stats.active) }}%</p>
+        </mat-card-content>
+      </mat-card>
+      <mat-card class="metric-card">
+        <mat-card-content>
+          <mat-icon class="metric-icon info">beach_access</mat-icon>
+          <p class="metric-value">{{ stats.onLeave }}</p>
+          <p class="metric-label">On Leave</p>
+          <p class="metric-pct">{{ getPercentage(stats.onLeave) }}%</p>
+        </mat-card-content>
+      </mat-card>
+      <mat-card class="metric-card">
+        <mat-card-content>
+          <mat-icon class="metric-icon warn">cancel</mat-icon>
+          <p class="metric-value">{{ stats.inactive }}</p>
+          <p class="metric-label">Inactive</p>
+          <p class="metric-pct">{{ getPercentage(stats.inactive) }}%</p>
+        </mat-card-content>
+      </mat-card>
+      <mat-card class="metric-card">
+        <mat-card-content>
+          <mat-icon class="metric-icon orange">person_add</mat-icon>
+          <p class="metric-value">{{ stats.newThisMonth }}</p>
+          <p class="metric-label">New This Month</p>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <div class="reports-grid">
+      <!-- By department -->
+      <mat-card>
+        <mat-card-header>
+          <mat-card-title>Headcount by Department</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <table mat-table [dataSource]="stats.byDepartment" class="report-table">
+            <ng-container matColumnDef="department">
+              <th mat-header-cell *matHeaderCellDef>Department</th>
+              <td mat-cell *matCellDef="let row">{{ row.department }}</td>
+            </ng-container>
+            <ng-container matColumnDef="count">
+              <th mat-header-cell *matHeaderCellDef>Employees</th>
+              <td mat-cell *matCellDef="let row">{{ row.count }}</td>
+            </ng-container>
+            <ng-container matColumnDef="percentage">
+              <th mat-header-cell *matHeaderCellDef>Share</th>
+              <td mat-cell *matCellDef="let row">
+                <div class="pct-cell">
+                  <mat-progress-bar
+                    mode="determinate"
+                    [value]="getPercentage(row.count)"
+                    color="primary"
+                  ></mat-progress-bar>
+                  <span>{{ getPercentage(row.count) }}%</span>
+                </div>
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="deptColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: deptColumns"></tr>
+          </table>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- By employment type -->
+      <mat-card>
+        <mat-card-header>
+          <mat-card-title>Employment Type Breakdown</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <table mat-table [dataSource]="stats.byEmploymentType" class="report-table">
+            <ng-container matColumnDef="type">
+              <th mat-header-cell *matHeaderCellDef>Type</th>
+              <td mat-cell *matCellDef="let row">{{ row.type | titlecase }}</td>
+            </ng-container>
+            <ng-container matColumnDef="count">
+              <th mat-header-cell *matHeaderCellDef>Employees</th>
+              <td mat-cell *matCellDef="let row">{{ row.count }}</td>
+            </ng-container>
+            <ng-container matColumnDef="percentage">
+              <th mat-header-cell *matHeaderCellDef>Share</th>
+              <td mat-cell *matCellDef="let row">
+                <div class="pct-cell">
+                  <mat-progress-bar
+                    mode="determinate"
+                    [value]="getPercentage(row.count)"
+                    color="accent"
+                  ></mat-progress-bar>
+                  <span>{{ getPercentage(row.count) }}%</span>
+                </div>
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="typeColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: typeColumns"></tr>
+          </table>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  }
+</div>

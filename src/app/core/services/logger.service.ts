@@ -1,61 +1,86 @@
 import { Injectable } from '@angular/core';
-import { environment } from '@environments/environment';
+import { environment } from '../../../environments/environment';
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+interface LogEntry {
+  level: LogLevel;
+  message: string;
+  context?: string;
+  data?: unknown;
+  timestamp: string;
+}
 
 const LOG_LEVELS: Record<LogLevel, number> = {
   debug: 0,
   info: 1,
   warn: 2,
-  error: 3
+  error: 3,
 };
 
+/**
+ * Structured logging service.
+ * Respects the configured log level and can be extended to
+ * ship logs to a remote observability platform.
+ */
 @Injectable({ providedIn: 'root' })
 export class LoggerService {
-  private readonly minLevel: number = LOG_LEVELS[environment.logLevel as LogLevel] ?? 1;
-  private readonly context = 'EmployeePortal';
+  private readonly minLevel: number;
+  private readonly enableConsole: boolean;
 
-  debug(message: string, data?: unknown): void {
-    this.log('debug', message, data);
+  constructor() {
+    this.minLevel = LOG_LEVELS[environment.logging.level as LogLevel] ?? LOG_LEVELS.debug;
+    this.enableConsole = environment.logging.enableConsole;
   }
 
-  info(message: string, data?: unknown): void {
-    this.log('info', message, data);
+  debug(message: string, context?: string, data?: unknown): void {
+    this.log('debug', message, context, data);
   }
 
-  warn(message: string, data?: unknown): void {
-    this.log('warn', message, data);
+  info(message: string, context?: string, data?: unknown): void {
+    this.log('info', message, context, data);
   }
 
-  error(message: string, error?: unknown): void {
-    this.log('error', message, error);
+  warn(message: string, context?: string, data?: unknown): void {
+    this.log('warn', message, context, data);
   }
 
-  private log(level: LogLevel, message: string, data?: unknown): void {
+  error(message: string, context?: string, data?: unknown): void {
+    this.log('error', message, context, data);
+  }
+
+  private log(level: LogLevel, message: string, context?: string, data?: unknown): void {
     if (LOG_LEVELS[level] < this.minLevel) return;
 
-    const timestamp = new Date().toISOString();
-    const logEntry = {
-      timestamp,
-      level: level.toUpperCase(),
-      context: this.context,
+    const entry: LogEntry = {
+      level,
       message,
-      ...(data !== undefined ? { data } : {})
+      context,
+      data,
+      timestamp: new Date().toISOString(),
     };
 
-    switch (level) {
-      case 'debug':
-        console.debug(JSON.stringify(logEntry));
-        break;
-      case 'info':
-        console.info(JSON.stringify(logEntry));
-        break;
-      case 'warn':
-        console.warn(JSON.stringify(logEntry));
-        break;
-      case 'error':
-        console.error(JSON.stringify(logEntry));
-        break;
+    if (this.enableConsole) {
+      const prefix = context ? `[${context}]` : '';
+      const formattedMessage = `${entry.timestamp} ${level.toUpperCase()} ${prefix} ${message}`;
+
+      switch (level) {
+        case 'debug':
+          console.debug(formattedMessage, data ?? '');
+          break;
+        case 'info':
+          console.info(formattedMessage, data ?? '');
+          break;
+        case 'warn':
+          console.warn(formattedMessage, data ?? '');
+          break;
+        case 'error':
+          console.error(formattedMessage, data ?? '');
+          break;
+      }
     }
+
+    // Extension point: send to remote logging service (e.g., DataDog, Sentry)
+    // this.remoteLogger.send(entry);
   }
 }

@@ -1,0 +1,63 @@
+{
+  "employees": [
+    {
+      "id": "1",
+      "employeeId": "EMP-001",
+      "firstName": "Alice",
+      "lastName": "Johnson",
+      "email": "alice.johnson@company.com",
+      "phone": "+1-555-0101",
+      "jobTitle": "Senior Software Engineer",
+      "departmentId": "d1",
+      "department": "Engineering",
+      "status": "active",
+      "employmentType": "full-time",
+      "hireDate": "2021-03-15",
+      "avatarUrl": null,
+      "createdAt": "2021-03-15T09:00:00Z",
+      "updatedAt": "2024-01-10T10:00:00Z"
+    },
+    {
+      "id": "2",
+      "employeeId": "EMP-002",
+      "firstName": "Bob",
+      "lastName": "Smith",
+      "email": "bob.smith@company.com",
+      "phone": "+1-555-0102",
+      "jobTitle": "Product Manager",
+      "departmentId": "d2",
+      "department": "Product",
+      "status": "active",
+      "employmentType": "full-time",
+      "hireDate": "2020-06-01",
+      "avatarUrl": null,
+      "createdAt": "2020-06-01T09:00:00Z",
+      "updatedAt": "2024-01-10T10:00:00Z"
+    },
+    {
+      "id": "3",
+      "employeeId": "EMP-003",
+      "firstName": "Carol",
+      "lastName": "Williams",
+      "email": "carol.williams@company.com",
+      "phone": "+1-555-0103",
+      "jobTitle": "UX Designer",
+      "departmentId": "d3",
+      "department": "Design",
+      "status": "on-leave",
+      "employmentType": "full-time",
+      "hireDate": "2022-01-10",
+      "avatarUrl": null,
+      "createdAt": "2022-01-10T09:00:00Z",
+      "updatedAt": "2024-01-10T10:00:00Z"
+    }
+  ],
+  "departments": [
+    { "id": "d1", "name": "Engineering", "code": "ENG", "createdAt": "2020-01-01T00:00:00Z", "updatedAt": "2020-01-01T00:00:00Z" },
+    { "id": "d2", "name": "Product",     "code": "PRD", "createdAt": "2020-01-01T00:00:00Z", "updatedAt": "2020-01-01T00:00:00Z" },
+    { "id": "d3", "name": "Design",      "code": "DES", "createdAt": "2020-01-01T00:00:00Z", "updatedAt": "2020-01-01T00:00:00Z" },
+    { "id": "d4", "name": "Sales",       "code": "SAL", "createdAt": "2020-01-01T00:00:00Z", "updatedAt": "2020-01-01T00:00:00Z" },
+    { "id": "d5", "name": "HR",          "code": "HR",  "createdAt": "2020-01-01T00:00:00Z", "updatedAt": "2020-01-01T00:00:00Z" },
+    { "id": "d6", "name": "Finance",     "code": "FIN", "createdAt": "2020-01-01T00:00:00Z", "updatedAt": "2020-01-01T00:00:00Z" }
+  ]
+}

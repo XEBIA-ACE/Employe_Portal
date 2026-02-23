@@ -1,89 +1,77 @@
 # Employee Portal
 
-A production-ready Angular 17 HR management application featuring employee management, attendance tracking, leave management, and department organization.
+A production-ready **Angular 17** single-page application for managing your organisation's workforce.
 
 ---
 
 ## Table of Contents
 
 - [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Architecture](#architecture)
+- [Architecture Overview](#architecture-overview)
 - [Project Structure](#project-structure)
+- [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
 - [Docker Setup](#docker-setup)
 - [Environment Configuration](#environment-configuration)
 - [API Reference](#api-reference)
+- [Authentication & Authorisation](#authentication--authorisation)
 - [Testing](#testing)
-- [Security](#security)
+- [Building for Production](#building-for-production)
+- [Contributing](#contributing)
 
 ---
 
 ## Features
 
-| Module | Capabilities |
-|---|---|
-| **Authentication** | JWT login/logout, token refresh, remember-me, role-based access |
-| **Dashboard** | Headcount stats, attendance overview, quick-action shortcuts |
-| **Employees** | Full CRUD, multi-step form, profile view with leave balances |
-| **Departments** | Department management, position catalog |
-| **Attendance** | Check-in/out, daily records, status tracking, date filters |
-| **Leave** | Leave requests, approval workflow, balance tracking |
-| **RBAC** | Roles: `admin`, `hr_manager`, `manager`, `employee` |
+| Feature | Description |
+|---------|-------------|
+| **Dashboard** | KPI cards, department breakdown, headcount analytics |
+| **Employee Management** | Full CRUD: list, search, filter, create, edit, delete |
+| **Role-based Access** | Admin / HR Manager / Manager / Employee roles |
+| **Profile & Security** | Personal info editing, password change |
+| **Reports** | Workforce analytics with CSV/Excel export |
+| **Responsive Design** | Mobile-first layout using Angular Material |
+| **JWT Authentication** | Token refresh flow, route guards, interceptors |
+| **Structured Logging** | Environment-aware log levels, extensible to remote targets |
 
 ---
 
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Framework | Angular 17 (Standalone Components, Signals) |
-| UI Library | Angular Material 17 |
-| HTTP | Angular HttpClient with functional interceptors |
-| State | Angular Signals (`signal`, `computed`) |
-| Forms | Angular Reactive Forms with multi-step Stepper |
-| Styling | SCSS with Angular Material theming |
-| Build | Angular CLI / esbuild |
-| Server | Nginx (production), Angular DevServer (development) |
-| Containerization | Docker multi-stage + docker-compose |
-
----
-
-## Architecture
+## Architecture Overview
 
 ```
-src/app/
-├── core/                    # Singleton services, models, guards, interceptors
-│   ├── guards/              # authGuard, roleGuard, noAuthGuard
-│   ├── interceptors/        # auth (JWT), error (global), logging (HTTP)
-│   ├── models/              # TypeScript interfaces for all domain entities
-│   └── services/            # AuthService, EmployeeService, DashboardService, …
-│
-├── features/                # Feature modules (lazy-loaded routes)
-│   ├── auth/                # Login page
-│   ├── dashboard/           # Stats overview
-│   ├── employees/           # List, detail, form (multi-step stepper)
-│   ├── departments/         # Department card grid + inline form
-│   ├── attendance/          # Attendance records + check-in/out
-│   └── leave/               # Leave requests + approval workflow
-│
-└── shared/                  # Reusable UI components, pipes
-    ├── components/
-    │   ├── layout/          # MainLayout, Navbar, Sidebar
-    │   ├── data-table/      # Generic paginated & sortable table
-    │   ├── confirm-dialog/  # Reusable confirmation modal
-    │   ├── page-header/     # Breadcrumbs + title + action slot
-    │   └── stat-card/       # KPI metric card
-    └── pipes/               # InitialsPipe, EmploymentStatusPipe
+┌─────────────────────────────────────────────────────────┐
+│                      Angular SPA                        │
+│                                                         │
+│  ┌─────────────┐  ┌──────────────┐  ┌───────────────┐  │
+│  │  Auth Guard  │  │ Auth Intcptr │  │ Error Intcptr │  │
+│  └──────┬──────┘  └──────┬───────┘  └──────┬────────┘  │
+│         │                │                  │           │
+│  ┌──────▼──────────────────────────────────▼────────┐  │
+│  │                   Core Services                   │  │
+│  │  AuthService · EmployeeService · LoggerService    │  │
+│  └───────────────────────┬───────────────────────────┘  │
+│                          │                              │
+│  ┌────────────────────────▼────────────────────────┐    │
+│  │               Feature Modules (Lazy)             │    │
+│  │  Dashboard · Employees · Profile · Reports       │    │
+│  └─────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────┘
+          │
+          ▼ HTTP (JWT Bearer)
+┌─────────────────────┐
+│   Backend REST API  │
+│  /api/v1/employees  │
+│  /api/v1/auth       │
+│  /api/v1/departments│
+└─────────────────────┘
 ```
 
-### Key Design Decisions
-
-- **Standalone Components** – No NgModule overhead; each component declares its own imports.
-- **Signals** – Reactive state without RxJS boilerplate for component-local state.
-- **Functional interceptors** – Modern Angular 15+ pattern for HTTP middleware.
-- **Lazy loading** – Every feature route is lazy-loaded via `loadComponent` / `loadChildren`.
-- **Clean Architecture** – Strict separation: `core` services never import from `features`; `features` never import from each other.
+**Key design decisions:**
+- **Standalone components** — No NgModule boilerplate; uses Angular 17's standalone API throughout.
+- **Angular Signals** — Reactive auth state via `signal()` / `computed()`.
+- **Functional interceptors** — `authInterceptor` and `errorInterceptor` using `HttpInterceptorFn`.
+- **Lazy loading** — Every feature route uses dynamic `import()` for optimal bundle splitting.
+- **Clean Architecture** — `core/` (domain logic) → `features/` (UI) → `shared/` (reusable UI).
 
 ---
 
@@ -93,285 +81,251 @@ src/app/
 employee-portal/
 ├── src/
 │   ├── app/
-│   │   ├── app.component.ts         # Shell root component
-│   │   ├── app.config.ts            # ApplicationConfig (providers)
-│   │   ├── app.routes.ts            # Top-level route tree
-│   │   ├── core/                    # (see Architecture)
+│   │   ├── app.component.*         Root shell (sidenav layout)
+│   │   ├── app.config.ts           ApplicationConfig (providers)
+│   │   ├── app.routes.ts           Top-level route definitions
+│   │   ├── core/
+│   │   │   ├── guards/             authGuard, guestGuard
+│   │   │   ├── interceptors/       authInterceptor, errorInterceptor
+│   │   │   ├── models/             TypeScript interfaces (Employee, User, …)
+│   │   │   └── services/           AuthService, EmployeeService, LoggerService, …
 │   │   ├── features/
+│   │   │   ├── auth/               Login & Register pages
+│   │   │   ├── dashboard/          Analytics overview
+│   │   │   ├── employees/          List · Detail · Form (stepper)
+│   │   │   ├── profile/            User profile & password
+│   │   │   └── reports/            Workforce analytics + export
 │   │   └── shared/
-│   ├── environments/
-│   │   ├── environment.ts           # Development config
-│   │   ├── environment.prod.ts      # Production config
-│   │   └── environment.staging.ts   # Staging config
-│   ├── styles/
-│   │   └── styles.scss              # Global styles & Material overrides
-│   ├── index.html
-│   └── main.ts
-├── .env.example
-├── .gitignore
-├── angular.json
+│   │       ├── components/         Header, Sidebar, Spinner, ConfirmDialog
+│   │       └── pipes/              TruncatePipe
+│   ├── environments/               environment.ts · environment.prod.ts
+│   ├── styles.scss                 Global styles & design tokens
+│   └── index.html
+├── mock-api/
+│   └── db.json                     json-server mock data
+├── Dockerfile                      Multi-stage production build
+├── Dockerfile.dev                  Development build
 ├── docker-compose.yml
-├── Dockerfile
-├── karma.conf.js
-├── nginx.conf
-├── package.json
-├── tsconfig.json
-├── tsconfig.app.json
-└── tsconfig.spec.json
+├── nginx.conf                      SPA-friendly nginx config
+├── proxy.conf.json                 Dev proxy: /api → localhost:3000
+└── angular.json
 ```
+
+---
+
+## Prerequisites
+
+| Tool | Version |
+|------|---------|
+| Node.js | ≥ 18 |
+| npm | ≥ 9 |
+| Angular CLI | ≥ 17 |
+| Docker (optional) | ≥ 24 |
 
 ---
 
 ## Quick Start
 
-### Prerequisites
-
-- Node.js 20+
-- npm 9+
-
-### 1. Install dependencies
-
 ```bash
+# 1. Clone the repository
+git clone <repo-url>
+cd employee-portal
+
+# 2. Install dependencies
 npm install
-```
 
-### 2. Configure environment
-
-```bash
+# 3. Copy and configure environment variables
 cp .env.example .env
-# Edit .env with your API URL and settings
-```
 
-### 3. Start development server
+# 4. Start the mock API (in a separate terminal)
+npx json-server --watch mock-api/db.json --port 3000
 
-```bash
+# 5. Start the Angular dev server
 npm start
-# App available at http://localhost:4200
+# → http://localhost:4200
 ```
 
-### 4. Build for production
-
-```bash
-npm run build:prod
-# Output in dist/employee-portal/browser/
-```
+The dev server proxies all `/api/*` requests to `http://localhost:3000` via `proxy.conf.json`.
 
 ---
 
 ## Docker Setup
 
-### Production (Nginx-served build)
+### Development (with live-reload)
 
 ```bash
-# Build and start all services
-docker-compose up --build
-
-# Access the app
-open http://localhost:4200
+docker-compose up frontend backend
+# Frontend → http://localhost:4200
+# Mock API → http://localhost:3000
 ```
 
-### Development (with hot reload)
+### Production preview
 
 ```bash
-# Start dev server container (Angular CLI dev server + hot reload)
-docker-compose --profile dev up frontend-dev
-
-# Access the app
-open http://localhost:4200
+docker-compose --profile prod up frontend-prod
+# → http://localhost:8080
 ```
 
-### Services
+### Build image manually
 
-| Service | Port | Description |
-|---|---|---|
-| `frontend` | 4200 | Angular app (Nginx, production build) |
-| `backend` | 3000 | Backend API (replace with your service) |
-| `postgres` | 5432 | PostgreSQL database |
-| `frontend-dev` | 4200 | Angular dev server (profile: `dev`) |
+```bash
+docker build -t employee-portal:latest .
+docker run -p 8080:80 employee-portal:latest
+```
 
 ---
 
 ## Environment Configuration
 
-Edit `src/environments/environment.ts` (dev) or set via Docker environment variables:
+Copy `.env.example` to `.env` and adjust the values:
 
-| Variable | Default | Description |
-|---|---|---|
-| `apiUrl` | `http://localhost:3000/api/v1` | Backend API base URL |
-| `logLevel` | `debug` (dev) / `error` (prod) | Logging verbosity |
-| `tokenKey` | `ep_access_token` | localStorage key for JWT |
-| `sessionTimeout` | `3600000` | Session timeout in ms |
-| `pagination.defaultPageSize` | `10` | Default table page size |
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `API_BASE_URL` | Backend base URL | `http://localhost:3000/api/v1` |
+| `API_TIMEOUT` | HTTP timeout (ms) | `30000` |
+| `LOG_LEVEL` | `debug\|info\|warn\|error` | `debug` (dev) / `error` (prod) |
+| `FEATURE_DARK_MODE` | Enable dark mode toggle | `true` |
+
+The Angular environment files (`src/environments/`) are the canonical source at build time. Update those files to change environment-specific values baked into the bundle.
 
 ---
 
 ## API Reference
 
-The frontend expects a REST API at `apiUrl`. All endpoints follow this contract:
+> The app expects a REST API at `{apiBaseUrl}`. The following endpoints are consumed:
 
 ### Authentication
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/auth/login` | Authenticate user → returns `{ data: AuthUser }` |
-| `POST` | `/auth/logout` | Invalidate tokens |
-| `POST` | `/auth/refresh` | Refresh access token |
-| `POST` | `/auth/change-password` | Change current user password |
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/auth/login` | Returns `{ accessToken, refreshToken, user }` |
+| `POST` | `/auth/register` | Create account |
+| `POST` | `/auth/refresh` | Exchange refresh token for new access token |
+| `POST` | `/auth/change-password` | Change password (authenticated) |
+| `PUT`  | `/auth/profile` | Update profile name / avatar |
 
 ### Employees
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/employees` | Paginated list (filter: search, departmentId, status) |
-| `POST` | `/employees` | Create employee |
-| `GET` | `/employees/:id` | Get employee by ID |
-| `PATCH` | `/employees/:id` | Update employee |
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET`    | `/employees` | Paginated employee list (supports `page`, `pageSize`, `search`, `status`, `departmentId`, `sortBy`, `sortOrder`) |
+| `GET`    | `/employees/:id` | Single employee detail |
+| `POST`   | `/employees` | Create employee |
+| `PUT`    | `/employees/:id` | Update employee |
 | `DELETE` | `/employees/:id` | Delete employee |
-| `POST` | `/employees/:id/avatar` | Upload avatar (multipart) |
+| `GET`    | `/employees/stats` | Aggregated workforce statistics |
+| `POST`   | `/employees/:id/avatar` | Upload avatar photo |
+| `GET`    | `/employees/export` | Export employees (`?format=csv\|xlsx`) |
 
 ### Departments
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/departments` | List departments |
-| `POST` | `/departments` | Create department |
-| `PATCH` | `/departments/:id` | Update department |
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET`    | `/departments` | All departments |
+| `GET`    | `/departments/:id` | Single department |
+| `POST`   | `/departments` | Create department |
+| `PUT`    | `/departments/:id` | Update department |
 | `DELETE` | `/departments/:id` | Delete department |
-| `GET` | `/positions` | List positions (filter: departmentId) |
 
-### Attendance
+**Standard response envelope:**
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/attendance` | List records (filter: employeeId, status, dates) |
-| `GET` | `/attendance/today/:employeeId` | Get today's record |
-| `POST` | `/attendance/check-in` | Record check-in |
-| `PATCH` | `/attendance/check-out` | Record check-out |
-| `GET` | `/attendance/summary/:employeeId` | Monthly summary |
-
-### Leave
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/leaves` | List leave requests (filter: status, type, employee) |
-| `POST` | `/leaves` | Submit leave request |
-| `GET` | `/leaves/:id` | Get leave request |
-| `PATCH` | `/leaves/:id/status` | Approve / reject |
-| `PATCH` | `/leaves/:id/cancel` | Cancel request |
-| `GET` | `/leaves/balance/:employeeId` | Get leave balances |
-
-### Dashboard
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/dashboard/stats` | Aggregated KPI stats |
-| `GET` | `/dashboard/headcount-trend` | Headcount over time |
-| `GET` | `/dashboard/department-distribution` | Employees per department |
-
-### Response Envelope
-
-```typescript
-// Single item
-{ "data": { ... }, "message": "optional" }
-
-// Paginated list
+```json
 {
-  "data": [...],
-  "meta": { "total": 100, "page": 1, "pageSize": 10, "totalPages": 10 }
-}
-
-// Error
-{
-  "statusCode": 400,
-  "message": "Validation failed",
-  "errors": { "email": ["Must be a valid email"] },
-  "timestamp": "2024-01-15T10:30:00.000Z",
-  "path": "/api/v1/employees"
+  "data": { ... },
+  "success": true,
+  "message": "Optional message",
+  "timestamp": "2024-01-15T10:30:00Z"
 }
 ```
+
+**Paginated response:**
+
+```json
+{
+  "data": [ ... ],
+  "pagination": {
+    "page": 1,
+    "pageSize": 10,
+    "total": 248,
+    "totalPages": 25,
+    "hasNext": true,
+    "hasPrevious": false
+  },
+  "success": true,
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
+
+---
+
+## Authentication & Authorisation
+
+### JWT Flow
+
+1. User logs in → receives `accessToken` + `refreshToken`
+2. `authInterceptor` attaches `Authorization: Bearer <token>` to all API requests
+3. On 401 response, interceptor automatically calls `/auth/refresh`, then retries
+4. On refresh failure, user is redirected to `/auth/login`
+
+Tokens are stored in `localStorage` under the keys `ep_access_token`, `ep_refresh_token`, and `ep_user`.
+
+### Roles & Permissions
+
+| Role | Permissions |
+|------|-------------|
+| `admin` | Full access (all operations) |
+| `hr-manager` | Read/write/delete employees; manage departments; view reports |
+| `manager` | Read/write employees in their team; view reports |
+| `employee` | View own profile only |
+
+Routes are protected by `authGuard` and `guestGuard`. Role checks use `data: { roles: [...] }` on route definitions and `AuthService.hasRole()` in templates.
 
 ---
 
 ## Testing
 
 ```bash
-# Run all unit tests (single pass)
+# Run unit tests (watch mode)
 npm test
 
-# Run tests in watch mode
-npm run test -- --watch
-
-# Generate coverage report
-npm run test:coverage
-# Coverage HTML report: coverage/employee-portal/index.html
-
-# Run tests in CI (headless Chrome)
+# Run once with coverage report
 npm run test:ci
+
+# Coverage report is written to ./coverage/
 ```
 
-### Test Structure
-
-```
-src/app/
-├── core/services/
-│   ├── auth.service.spec.ts      # Authentication service tests
-│   └── employee.service.spec.ts  # Employee CRUD service tests
-├── features/auth/login/
-│   └── login.component.spec.ts   # Login form validation & submission
-└── shared/pipes/
-    └── initials.pipe.spec.ts     # Pipe unit tests
-```
-
-### Testing Patterns Used
-
-- **HttpClientTestingModule** – Mock HTTP requests without a real server
-- **Jasmine spies** – Stub services in component tests
-- **NoopAnimationsModule** – Disable animations in tests for speed
-- **Signal testing** – Read signal values directly in assertions
+Test files follow the convention `*.spec.ts` co-located with the source file they test.
 
 ---
 
-## Security
+## Building for Production
 
-### Authentication
-- JWT Bearer token attached to every API request via `AuthInterceptor`
-- Automatic token refresh on 401 (silent re-auth)
-- Tokens stored in `localStorage` (replaceable with `HttpOnly` cookies for higher security)
-- Route guards prevent unauthorized navigation (`authGuard`, `roleGuard`, `noAuthGuard`)
+```bash
+npm run build:prod
+# Output → dist/employee-portal/
+```
 
-### Authorization (RBAC)
-
-| Role | Access |
-|---|---|
-| `admin` | Full access to all modules + settings + department management |
-| `hr_manager` | Employee CRUD, departments (view), leave approvals |
-| `manager` | Team attendance/leave, direct reports |
-| `employee` | Own profile, own attendance, own leave requests |
-
-### HTTP Security Headers (Nginx)
-- `X-Frame-Options: SAMEORIGIN`
-- `X-Content-Type-Options: nosniff`
-- `X-XSS-Protection: 1; mode=block`
-- `Content-Security-Policy` (restrictive default)
-- `Referrer-Policy: strict-origin-when-cross-origin`
-
-### Input Validation
-- All forms use Angular Reactive Forms with `Validators`
-- API errors are surfaced to users via the global `ErrorInterceptor`
-- No raw HTML interpolation — Angular's template syntax escapes all values
+The production build includes:
+- Tree-shaking & Ahead-of-Time (AOT) compilation
+- Differential loading (ES2022 target)
+- Content-hashed filenames for cache busting
+- Source maps disabled
+- Minimised bundles
 
 ---
 
 ## Contributing
 
-1. Create a feature branch: `git checkout -b feature/my-feature`
-2. Make your changes and add tests
-3. Run `npm test` and ensure all tests pass
-4. Run `npm run lint` to check for linting issues
-5. Submit a pull request
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feat/my-feature`
+3. Commit your changes: `git commit -m 'feat: add my feature'`
+4. Push to the branch: `git push origin feat/my-feature`
+5. Open a Pull Request
+
+Please follow the [Angular commit message convention](https://www.conventionalcommits.org/).
 
 ---
 
-## License
+## Licence
 
-MIT
+MIT © Employee Portal Contributors
