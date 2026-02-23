@@ -1,6 +1,6 @@
 # Employee Portal
 
-A comprehensive, production-ready Employee Portal built with Angular 17 and Angular Material. This application provides HR management capabilities including employee management, department management, and role-based access control.
+A production-ready Angular 17 HR management application featuring employee management, attendance tracking, leave management, and department organization.
 
 ---
 
@@ -9,122 +9,81 @@ A comprehensive, production-ready Employee Portal built with Angular 17 and Angu
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Architecture](#architecture)
-- [Getting Started](#getting-started)
-- [Available Scripts](#available-scripts)
 - [Project Structure](#project-structure)
-- [API Documentation](#api-documentation)
-- [Authentication & Roles](#authentication--roles)
+- [Quick Start](#quick-start)
 - [Docker Setup](#docker-setup)
+- [Environment Configuration](#environment-configuration)
+- [API Reference](#api-reference)
 - [Testing](#testing)
-- [Environment Variables](#environment-variables)
+- [Security](#security)
 
 ---
 
 ## Features
 
-- **Authentication**: JWT-based login/logout with role-based access control
-- **Dashboard**: Real-time stats, charts, and quick insights
-- **Employee Management**: Full CRUD for employees with search, filter, and pagination
-- **Department Management**: Manage organizational departments and team structure
-- **Profile Management**: View and edit own user profile
-- **Responsive Design**: Mobile-first, fully responsive UI
-- **Observability**: Structured logging, HTTP request/response logging
-- **In-Memory API**: Development mode uses `angular-in-memory-web-api` for rapid prototyping
+| Module | Capabilities |
+|---|---|
+| **Authentication** | JWT login/logout, token refresh, remember-me, role-based access |
+| **Dashboard** | Headcount stats, attendance overview, quick-action shortcuts |
+| **Employees** | Full CRUD, multi-step form, profile view with leave balances |
+| **Departments** | Department management, position catalog |
+| **Attendance** | Check-in/out, daily records, status tracking, date filters |
+| **Leave** | Leave requests, approval workflow, balance tracking |
+| **RBAC** | Roles: `admin`, `hr_manager`, `manager`, `employee` |
 
 ---
 
 ## Tech Stack
 
-| Technology | Version | Purpose |
-|---|---|---|
-| Angular | 17.x | Core framework |
-| Angular Material | 17.x | UI components |
-| RxJS | 7.x | Reactive state management |
-| TypeScript | 5.4.x | Type safety |
-| Angular CDK | 17.x | Accessibility & layout |
-| jwt-decode | 4.x | JWT token parsing |
-| angular-in-memory-web-api | 0.17.x | Mock API for development |
+| Layer | Technology |
+|---|---|
+| Framework | Angular 17 (Standalone Components, Signals) |
+| UI Library | Angular Material 17 |
+| HTTP | Angular HttpClient with functional interceptors |
+| State | Angular Signals (`signal`, `computed`) |
+| Forms | Angular Reactive Forms with multi-step Stepper |
+| Styling | SCSS with Angular Material theming |
+| Build | Angular CLI / esbuild |
+| Server | Nginx (production), Angular DevServer (development) |
+| Containerization | Docker multi-stage + docker-compose |
 
 ---
 
 ## Architecture
 
-The application follows **Clean Architecture** with clear layer separation:
-
 ```
 src/app/
-├── core/             # Singleton services, guards, interceptors, models
-│   ├── guards/       # Route guards (auth, role)
-│   ├── interceptors/ # HTTP interceptors (auth, error, loading)
-│   ├── models/       # Domain models/interfaces
-│   └── services/     # Business logic services
-├── features/         # Feature modules (lazy-loaded)
-│   ├── auth/         # Authentication (login, forgot password)
-│   ├── dashboard/    # Dashboard with stats
-│   ├── departments/  # Department CRUD
-│   ├── employees/    # Employee CRUD
-│   ├── layout/       # App shell (sidebar, header)
-│   └── profile/      # User profile
-└── shared/           # Reusable components, pipes, directives
-    ├── components/   # Shared UI components
-    ├── directives/   # Custom directives
-    └── pipes/        # Custom pipes
+├── core/                    # Singleton services, models, guards, interceptors
+│   ├── guards/              # authGuard, roleGuard, noAuthGuard
+│   ├── interceptors/        # auth (JWT), error (global), logging (HTTP)
+│   ├── models/              # TypeScript interfaces for all domain entities
+│   └── services/            # AuthService, EmployeeService, DashboardService, …
+│
+├── features/                # Feature modules (lazy-loaded routes)
+│   ├── auth/                # Login page
+│   ├── dashboard/           # Stats overview
+│   ├── employees/           # List, detail, form (multi-step stepper)
+│   ├── departments/         # Department card grid + inline form
+│   ├── attendance/          # Attendance records + check-in/out
+│   └── leave/               # Leave requests + approval workflow
+│
+└── shared/                  # Reusable UI components, pipes
+    ├── components/
+    │   ├── layout/          # MainLayout, Navbar, Sidebar
+    │   ├── data-table/      # Generic paginated & sortable table
+    │   ├── confirm-dialog/  # Reusable confirmation modal
+    │   ├── page-header/     # Breadcrumbs + title + action slot
+    │   └── stat-card/       # KPI metric card
+    └── pipes/               # InitialsPipe, EmploymentStatusPipe
 ```
 
-**Design Principles Applied:**
-- **SOLID**: Each service has single responsibility, features are open for extension
-- **DI**: Angular's DI container manages all service dependencies
-- **Lazy Loading**: Each feature module is code-split and loaded on demand
-- **Reactive**: RxJS observables/BehaviorSubjects for async data flows
+### Key Design Decisions
 
----
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js >= 18.x
-- npm >= 9.x
-- Angular CLI >= 17.x
-
-### Installation
-
-```bash
-# Clone the repository
-git clone <repository-url>
-cd employee-portal
-
-# Install dependencies
-npm install
-
-# Start development server
-npm start
-```
-
-The app will be available at `http://localhost:4200`.
-
-### Default Credentials (Development Mode)
-
-| Role | Email | Password |
-|---|---|---|
-| Admin | admin@company.com | Admin@123 |
-| HR Manager | hr@company.com | Hr@123 |
-| Employee | employee@company.com | Employee@123 |
-
----
-
-## Available Scripts
-
-```bash
-npm start              # Start dev server (port 4200)
-npm run build          # Build for development
-npm run build:prod     # Build for production (optimized)
-npm test               # Run unit tests (headless)
-npm run test:watch     # Run unit tests in watch mode
-npm run test:coverage  # Generate code coverage report
-npm run lint           # Run ESLint
-npm run analyze        # Analyze production bundle size
-```
+- **Standalone Components** – No NgModule overhead; each component declares its own imports.
+- **Signals** – Reactive state without RxJS boilerplate for component-local state.
+- **Functional interceptors** – Modern Angular 15+ pattern for HTTP middleware.
+- **Lazy loading** – Every feature route is lazy-loaded via `loadComponent` / `loadChildren`.
+- **Clean Architecture** – Strict separation: `core` services never import from `features`; `features` never import from each other.
 
 ---
 
@@ -134,148 +93,201 @@ npm run analyze        # Analyze production bundle size
 employee-portal/
 ├── src/
 │   ├── app/
-│   │   ├── core/
-│   │   │   ├── guards/
-│   │   │   │   ├── auth.guard.ts
-│   │   │   │   └── role.guard.ts
-│   │   │   ├── interceptors/
-│   │   │   │   ├── auth.interceptor.ts
-│   │   │   │   ├── error.interceptor.ts
-│   │   │   │   └── loading.interceptor.ts
-│   │   │   ├── models/
-│   │   │   │   ├── api-response.model.ts
-│   │   │   │   ├── department.model.ts
-│   │   │   │   ├── employee.model.ts
-│   │   │   │   └── user.model.ts
-│   │   │   ├── services/
-│   │   │   │   ├── auth.service.ts
-│   │   │   │   ├── department.service.ts
-│   │   │   │   ├── employee.service.ts
-│   │   │   │   ├── loading.service.ts
-│   │   │   │   └── notification.service.ts
-│   │   │   └── core.module.ts
+│   │   ├── app.component.ts         # Shell root component
+│   │   ├── app.config.ts            # ApplicationConfig (providers)
+│   │   ├── app.routes.ts            # Top-level route tree
+│   │   ├── core/                    # (see Architecture)
 │   │   ├── features/
-│   │   │   ├── auth/
-│   │   │   ├── dashboard/
-│   │   │   ├── departments/
-│   │   │   ├── employees/
-│   │   │   ├── layout/
-│   │   │   └── profile/
-│   │   ├── shared/
-│   │   │   ├── components/
-│   │   │   ├── directives/
-│   │   │   ├── pipes/
-│   │   │   └── shared.module.ts
-│   │   ├── app-routing.module.ts
-│   │   ├── app.component.ts
-│   │   └── app.module.ts
-│   ├── assets/
+│   │   └── shared/
 │   ├── environments/
-│   │   ├── environment.ts
-│   │   └── environment.prod.ts
+│   │   ├── environment.ts           # Development config
+│   │   ├── environment.prod.ts      # Production config
+│   │   └── environment.staging.ts   # Staging config
+│   ├── styles/
+│   │   └── styles.scss              # Global styles & Material overrides
 │   ├── index.html
-│   ├── main.ts
-│   └── styles.scss
-├── Dockerfile
-├── docker-compose.yml
-├── nginx.conf
+│   └── main.ts
+├── .env.example
+├── .gitignore
 ├── angular.json
+├── docker-compose.yml
+├── Dockerfile
+├── karma.conf.js
+├── nginx.conf
 ├── package.json
-└── tsconfig.json
+├── tsconfig.json
+├── tsconfig.app.json
+└── tsconfig.spec.json
 ```
 
 ---
 
-## API Documentation
+## Quick Start
 
-The app connects to a REST API. In development, `angular-in-memory-web-api` simulates all endpoints.
+### Prerequisites
 
-### Base URL
-- Development: `http://localhost:4200/api` (intercepted by in-memory API)
-- Production: Configured via `environment.prod.ts`
+- Node.js 20+
+- npm 9+
 
-### Endpoints
+### 1. Install dependencies
 
-#### Authentication
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/auth/login` | Authenticate user, returns JWT |
-| POST | `/api/auth/logout` | Invalidate session |
-| POST | `/api/auth/refresh` | Refresh JWT token |
-
-#### Employees
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/employees` | List all employees (paginated) |
-| GET | `/api/employees/:id` | Get employee by ID |
-| POST | `/api/employees` | Create new employee |
-| PUT | `/api/employees/:id` | Update employee |
-| DELETE | `/api/employees/:id` | Delete employee |
-
-#### Departments
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/departments` | List all departments |
-| GET | `/api/departments/:id` | Get department by ID |
-| POST | `/api/departments` | Create new department |
-| PUT | `/api/departments/:id` | Update department |
-| DELETE | `/api/departments/:id` | Delete department |
-
-### Response Format
-
-All API responses follow this structure:
-
-```json
-{
-  "success": true,
-  "data": { ... },
-  "message": "Operation successful",
-  "timestamp": "2024-01-01T00:00:00Z",
-  "pagination": {
-    "page": 1,
-    "limit": 10,
-    "total": 100,
-    "totalPages": 10
-  }
-}
+```bash
+npm install
 ```
 
----
+### 2. Configure environment
 
-## Authentication & Roles
+```bash
+cp .env.example .env
+# Edit .env with your API URL and settings
+```
 
-The app implements Role-Based Access Control (RBAC) with three roles:
+### 3. Start development server
 
-| Role | Permissions |
-|---|---|
-| **Admin** | Full access to all features |
-| **HR** | Manage employees and departments, view reports |
-| **Employee** | View own profile only |
+```bash
+npm start
+# App available at http://localhost:4200
+```
 
-### Route Guards
-- `AuthGuard`: Redirects unauthenticated users to `/auth/login`
-- `RoleGuard`: Restricts routes based on user role
+### 4. Build for production
+
+```bash
+npm run build:prod
+# Output in dist/employee-portal/browser/
+```
 
 ---
 
 ## Docker Setup
 
-### Development
+### Production (Nginx-served build)
 
 ```bash
-# Build and start dev container
-docker-compose up employee-portal-dev
+# Build and start all services
+docker-compose up --build
+
+# Access the app
+open http://localhost:4200
 ```
 
-### Production
+### Development (with hot reload)
 
 ```bash
-# Build and start production nginx container
-docker-compose --profile production up employee-portal-prod
+# Start dev server container (Angular CLI dev server + hot reload)
+docker-compose --profile dev up frontend-dev
 
-# Or build directly
-docker build -t employee-portal:prod .
-docker run -p 8080:80 employee-portal:prod
+# Access the app
+open http://localhost:4200
+```
+
+### Services
+
+| Service | Port | Description |
+|---|---|---|
+| `frontend` | 4200 | Angular app (Nginx, production build) |
+| `backend` | 3000 | Backend API (replace with your service) |
+| `postgres` | 5432 | PostgreSQL database |
+| `frontend-dev` | 4200 | Angular dev server (profile: `dev`) |
+
+---
+
+## Environment Configuration
+
+Edit `src/environments/environment.ts` (dev) or set via Docker environment variables:
+
+| Variable | Default | Description |
+|---|---|---|
+| `apiUrl` | `http://localhost:3000/api/v1` | Backend API base URL |
+| `logLevel` | `debug` (dev) / `error` (prod) | Logging verbosity |
+| `tokenKey` | `ep_access_token` | localStorage key for JWT |
+| `sessionTimeout` | `3600000` | Session timeout in ms |
+| `pagination.defaultPageSize` | `10` | Default table page size |
+
+---
+
+## API Reference
+
+The frontend expects a REST API at `apiUrl`. All endpoints follow this contract:
+
+### Authentication
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/auth/login` | Authenticate user → returns `{ data: AuthUser }` |
+| `POST` | `/auth/logout` | Invalidate tokens |
+| `POST` | `/auth/refresh` | Refresh access token |
+| `POST` | `/auth/change-password` | Change current user password |
+
+### Employees
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/employees` | Paginated list (filter: search, departmentId, status) |
+| `POST` | `/employees` | Create employee |
+| `GET` | `/employees/:id` | Get employee by ID |
+| `PATCH` | `/employees/:id` | Update employee |
+| `DELETE` | `/employees/:id` | Delete employee |
+| `POST` | `/employees/:id/avatar` | Upload avatar (multipart) |
+
+### Departments
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/departments` | List departments |
+| `POST` | `/departments` | Create department |
+| `PATCH` | `/departments/:id` | Update department |
+| `DELETE` | `/departments/:id` | Delete department |
+| `GET` | `/positions` | List positions (filter: departmentId) |
+
+### Attendance
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/attendance` | List records (filter: employeeId, status, dates) |
+| `GET` | `/attendance/today/:employeeId` | Get today's record |
+| `POST` | `/attendance/check-in` | Record check-in |
+| `PATCH` | `/attendance/check-out` | Record check-out |
+| `GET` | `/attendance/summary/:employeeId` | Monthly summary |
+
+### Leave
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/leaves` | List leave requests (filter: status, type, employee) |
+| `POST` | `/leaves` | Submit leave request |
+| `GET` | `/leaves/:id` | Get leave request |
+| `PATCH` | `/leaves/:id/status` | Approve / reject |
+| `PATCH` | `/leaves/:id/cancel` | Cancel request |
+| `GET` | `/leaves/balance/:employeeId` | Get leave balances |
+
+### Dashboard
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/dashboard/stats` | Aggregated KPI stats |
+| `GET` | `/dashboard/headcount-trend` | Headcount over time |
+| `GET` | `/dashboard/department-distribution` | Employees per department |
+
+### Response Envelope
+
+```typescript
+// Single item
+{ "data": { ... }, "message": "optional" }
+
+// Paginated list
+{
+  "data": [...],
+  "meta": { "total": 100, "page": 1, "pageSize": 10, "totalPages": 10 }
+}
+
+// Error
+{
+  "statusCode": 400,
+  "message": "Validation failed",
+  "errors": { "email": ["Must be a valid email"] },
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "path": "/api/v1/employees"
+}
 ```
 
 ---
@@ -283,43 +295,83 @@ docker run -p 8080:80 employee-portal:prod
 ## Testing
 
 ```bash
-# Unit tests
+# Run all unit tests (single pass)
 npm test
 
-# Watch mode
-npm run test:watch
+# Run tests in watch mode
+npm run test -- --watch
 
-# Coverage report (output to /coverage)
+# Generate coverage report
 npm run test:coverage
+# Coverage HTML report: coverage/employee-portal/index.html
+
+# Run tests in CI (headless Chrome)
+npm run test:ci
 ```
 
-Test files are co-located with their source files using the `.spec.ts` pattern.
+### Test Structure
+
+```
+src/app/
+├── core/services/
+│   ├── auth.service.spec.ts      # Authentication service tests
+│   └── employee.service.spec.ts  # Employee CRUD service tests
+├── features/auth/login/
+│   └── login.component.spec.ts   # Login form validation & submission
+└── shared/pipes/
+    └── initials.pipe.spec.ts     # Pipe unit tests
+```
+
+### Testing Patterns Used
+
+- **HttpClientTestingModule** – Mock HTTP requests without a real server
+- **Jasmine spies** – Stub services in component tests
+- **NoopAnimationsModule** – Disable animations in tests for speed
+- **Signal testing** – Read signal values directly in assertions
 
 ---
 
-## Environment Variables
+## Security
 
-Copy `.env.example` to `.env` and configure:
+### Authentication
+- JWT Bearer token attached to every API request via `AuthInterceptor`
+- Automatic token refresh on 401 (silent re-auth)
+- Tokens stored in `localStorage` (replaceable with `HttpOnly` cookies for higher security)
+- Route guards prevent unauthorized navigation (`authGuard`, `roleGuard`, `noAuthGuard`)
 
-| Variable | Description | Default |
-|---|---|---|
-| `API_BASE_URL` | Backend API base URL | `http://localhost:3000/api/v1` |
-| `ENABLE_MOCK_API` | Use in-memory mock API | `true` |
-| `JWT_SECRET` | JWT signing secret | - |
-| `LOG_LEVEL` | Logging verbosity | `debug` |
+### Authorization (RBAC)
+
+| Role | Access |
+|---|---|
+| `admin` | Full access to all modules + settings + department management |
+| `hr_manager` | Employee CRUD, departments (view), leave approvals |
+| `manager` | Team attendance/leave, direct reports |
+| `employee` | Own profile, own attendance, own leave requests |
+
+### HTTP Security Headers (Nginx)
+- `X-Frame-Options: SAMEORIGIN`
+- `X-Content-Type-Options: nosniff`
+- `X-XSS-Protection: 1; mode=block`
+- `Content-Security-Policy` (restrictive default)
+- `Referrer-Policy: strict-origin-when-cross-origin`
+
+### Input Validation
+- All forms use Angular Reactive Forms with `Validators`
+- API errors are surfaced to users via the global `ErrorInterceptor`
+- No raw HTML interpolation — Angular's template syntax escapes all values
 
 ---
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+1. Create a feature branch: `git checkout -b feature/my-feature`
+2. Make your changes and add tests
+3. Run `npm test` and ensure all tests pass
+4. Run `npm run lint` to check for linting issues
+5. Submit a pull request
 
 ---
 
 ## License
 
-This project is licensed under the MIT License.
+MIT

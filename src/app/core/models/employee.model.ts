@@ -1,103 +1,78 @@
-/**
- * Employee employment status
- */
-export enum EmploymentStatus {
-  ACTIVE = 'active',
-  INACTIVE = 'inactive',
-  ON_LEAVE = 'on_leave',
-  TERMINATED = 'terminated',
-}
+export type EmploymentStatus = 'active' | 'inactive' | 'on_leave' | 'terminated';
+export type EmploymentType = 'full_time' | 'part_time' | 'contract' | 'intern';
+export type Gender = 'male' | 'female' | 'other' | 'prefer_not_to_say';
 
-/**
- * Employment type
- */
-export enum EmploymentType {
-  FULL_TIME = 'full_time',
-  PART_TIME = 'part_time',
-  CONTRACT = 'contract',
-  INTERN = 'intern',
-}
-
-/**
- * Gender options
- */
-export enum Gender {
-  MALE = 'male',
-  FEMALE = 'female',
-  OTHER = 'other',
-  PREFER_NOT_TO_SAY = 'prefer_not_to_say',
-}
-
-/**
- * Core employee entity
- */
 export interface Employee {
   id: string;
-  employeeId: string;          // Human-readable ID (e.g. EMP-001)
+  employeeId: string;
   firstName: string;
   lastName: string;
   email: string;
   phone?: string;
-  dateOfBirth?: string;
+  dateOfBirth?: Date;
   gender?: Gender;
   address?: Address;
-
-  // Employment details
   departmentId: string;
-  departmentName?: string;     // Populated by join
-  jobTitle: string;
+  departmentName?: string;
+  positionId: string;
+  positionTitle?: string;
   managerId?: string;
-  managerName?: string;        // Populated by join
-  hireDate: string;
-  terminationDate?: string;
-  employmentStatus: EmploymentStatus;
+  managerName?: string;
   employmentType: EmploymentType;
-
-  // Compensation
+  employmentStatus: EmploymentStatus;
+  startDate: Date;
+  endDate?: Date;
   salary?: number;
-  currency?: string;
-
-  // Metadata
   avatarUrl?: string;
+  emergencyContact?: EmergencyContact;
   skills?: string[];
-  bio?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-/**
- * Mailing address
- */
 export interface Address {
   street: string;
   city: string;
   state: string;
-  zipCode: string;
+  postalCode: string;
   country: string;
 }
 
-/**
- * Payload for creating a new employee
- */
-export type CreateEmployeeDto = Omit<Employee,
-  'id' | 'departmentName' | 'managerName' | 'createdAt' | 'updatedAt'
->;
+export interface EmergencyContact {
+  name: string;
+  relationship: string;
+  phone: string;
+  email?: string;
+}
 
-/**
- * Payload for updating an employee
- */
-export type UpdateEmployeeDto = Partial<CreateEmployeeDto>;
+export interface CreateEmployeeRequest {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  dateOfBirth?: Date;
+  gender?: Gender;
+  departmentId: string;
+  positionId: string;
+  managerId?: string;
+  employmentType: EmploymentType;
+  startDate: Date;
+  salary?: number;
+}
 
-/**
- * Query parameters for listing employees
- */
-export interface EmployeeQueryParams {
-  page?: number;
-  limit?: number;
+export interface UpdateEmployeeRequest extends Partial<CreateEmployeeRequest> {
+  employmentStatus?: EmploymentStatus;
+  address?: Address;
+  emergencyContact?: EmergencyContact;
+  skills?: string[];
+}
+
+export interface EmployeeFilter {
   search?: string;
   departmentId?: string;
   employmentStatus?: EmploymentStatus;
   employmentType?: EmploymentType;
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  managerId?: string;
+  startDateFrom?: Date;
+  startDateTo?: Date;
 }

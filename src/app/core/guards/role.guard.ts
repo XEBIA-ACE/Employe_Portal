@@ -1,38 +1,25 @@
-import { Injectable } from '@angular/core';
-import { CanActivate, ActivatedRouteSnapshot, Router, UrlTree } from '@angular/router';
-import { AuthService } from '../services/auth.service';
-import { UserRole } from '../models/user.model';
-import { NotificationService } from '../services/notification.service';
+import { inject } from '@angular/core';
+import { CanActivateFn, Router, ActivatedRouteSnapshot } from '@angular/router';
+import { AuthService } from '@core/services/auth.service';
+import { NotificationService } from '@core/services/notification.service';
 
 /**
- * Guards routes based on user role.
- * Expected usage in route config:
- *   { path: 'admin', canActivate: [RoleGuard], data: { roles: ['admin'] } }
+ * Protects routes based on user roles.
+ * Usage: canActivate: [authGuard, roleGuard]
+ * Route data: { roles: ['admin', 'hr_manager'] }
  */
-@Injectable({
-  providedIn: 'root'
-})
-export class RoleGuard implements CanActivate {
+export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
+  const authService = inject(AuthService);
+  const notificationService = inject(NotificationService);
+  const router = inject(Router);
 
-  constructor(
-    private authService: AuthService,
-    private router: Router,
-    private notification: NotificationService,
-  ) {}
+  const requiredRoles: string[] = route.data['roles'] ?? [];
 
-  canActivate(route: ActivatedRouteSnapshot): boolean | UrlTree {
-    const allowedRoles: UserRole[] = route.data['roles'] ?? [];
-
-    if (allowedRoles.length === 0) {
-      // No role restriction on this route
-      return true;
-    }
-
-    if (this.authService.hasAnyRole(allowedRoles)) {
-      return true;
-    }
-
-    this.notification.error('You do not have permission to access this page.');
-    return this.router.createUrlTree(['/dashboard']);
+  if (requiredRoles.length === 0 || authService.hasRole(requiredRoles)) {
+    return true;
   }
-}
+
+  notificationService.error('You do not have permission to access this page.');
+  router.navigate(['/dashboard']);
+  return false;
+};

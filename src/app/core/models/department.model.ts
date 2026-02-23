@@ -1,31 +1,43 @@
-/**
- * Department entity
- */
 export interface Department {
   id: string;
   name: string;
-  code: string;               // Short code (e.g. ENG, HR, FIN)
+  code: string;
   description?: string;
   managerId?: string;
-  managerName?: string;       // Populated by join
+  managerName?: string;
   parentDepartmentId?: string;
-  employeeCount?: number;     // Computed field
+  parentDepartmentName?: string;
+  employeeCount?: number;
   budget?: number;
-  currency?: string;
-  location?: string;
   isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-/**
- * Payload for creating a department
- */
-export type CreateDepartmentDto = Omit<Department,
-  'id' | 'managerName' | 'employeeCount' | 'createdAt' | 'updatedAt'
->;
+export interface Position {
+  id: string;
+  title: string;
+  code: string;
+  departmentId: string;
+  departmentName?: string;
+  level: number;
+  description?: string;
+  minSalary?: number;
+  maxSalary?: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
-/**
- * Payload for updating a department
- */
-export type UpdateDepartmentDto = Partial<CreateDepartmentDto>;
+export interface CreateDepartmentRequest {
+  name: string;
+  code: string;
+  description?: string;
+  managerId?: string;
+  parentDepartmentId?: string;
+  budget?: number;
+}
+
+export interface UpdateDepartmentRequest extends Partial<CreateDepartmentRequest> {
+  isActive?: boolean;
+}

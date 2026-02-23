@@ -1,83 +1,69 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
-import { environment } from '../../../environments/environment';
+import { environment } from '@environments/environment';
 import {
   Employee,
-  CreateEmployeeDto,
-  UpdateEmployeeDto,
-  EmployeeQueryParams,
-} from '../models/employee.model';
-import { ApiResponse, PaginatedResponse } from '../models/api-response.model';
+  CreateEmployeeRequest,
+  UpdateEmployeeRequest,
+  EmployeeFilter
+} from '@core/models/employee.model';
+import { ApiResponse, PaginatedResponse, PaginationParams } from '@core/models/api.model';
 
-/**
- * Employee resource service.
- * All HTTP calls go through this service; interceptors handle auth tokens and errors.
- */
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class EmployeeService {
   private readonly apiUrl = `${environment.apiUrl}/employees`;
 
   constructor(private http: HttpClient) {}
 
-  /**
-   * Fetch a paginated list of employees with optional filters.
-   */
-  getEmployees(params?: EmployeeQueryParams): Observable<PaginatedResponse<Employee>> {
-    let httpParams = new HttpParams();
+  getEmployees(
+    filter?: EmployeeFilter,
+    pagination?: PaginationParams
+  ): Observable<PaginatedResponse<Employee>> {
+    let params = new HttpParams();
 
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
-          httpParams = httpParams.set(key, String(value));
-        }
-      });
-    }
+    // Pagination
+    if (pagination?.page) params = params.set('page', pagination.page);
+    if (pagination?.pageSize) params = params.set('pageSize', pagination.pageSize);
+    if (pagination?.sortBy) params = params.set('sortBy', pagination.sortBy);
+    if (pagination?.sortOrder) params = params.set('sortOrder', pagination.sortOrder);
 
-    return this.http.get<PaginatedResponse<Employee>>(this.apiUrl, { params: httpParams });
+    // Filters
+    if (filter?.search) params = params.set('search', filter.search);
+    if (filter?.departmentId) params = params.set('departmentId', filter.departmentId);
+    if (filter?.employmentStatus) params = params.set('employmentStatus', filter.employmentStatus);
+    if (filter?.employmentType) params = params.set('employmentType', filter.employmentType);
+    if (filter?.managerId) params = params.set('managerId', filter.managerId);
+
+    return this.http.get<PaginatedResponse<Employee>>(this.apiUrl, { params });
   }
 
-  /**
-   * Fetch a single employee by ID.
-   */
-  getEmployee(id: string): Observable<Employee> {
-    return this.http
-      .get<ApiResponse<Employee>>(`${this.apiUrl}/${id}`)
-      .pipe(map(res => res.data));
+  getEmployee(id: string): Observable<ApiResponse<Employee>> {
+    return this.http.get<ApiResponse<Employee>>(`${this.apiUrl}/${id}`);
   }
 
-  /**
-   * Create a new employee record.
-   */
-  createEmployee(employee: CreateEmployeeDto): Observable<Employee> {
-    return this.http
-      .post<ApiResponse<Employee>>(this.apiUrl, employee)
-      .pipe(map(res => res.data));
+  createEmployee(payload: CreateEmployeeRequest): Observable<ApiResponse<Employee>> {
+    return this.http.post<ApiResponse<Employee>>(this.apiUrl, payload);
   }
 
-  /**
-   * Update an existing employee record.
-   */
-  updateEmployee(id: string, updates: UpdateEmployeeDto): Observable<Employee> {
-    return this.http
-      .put<ApiResponse<Employee>>(`${this.apiUrl}/${id}`, updates)
-      .pipe(map(res => res.data));
+  updateEmployee(id: string, payload: UpdateEmployeeRequest): Observable<ApiResponse<Employee>> {
+    return this.http.patch<ApiResponse<Employee>>(`${this.apiUrl}/${id}`, payload);
   }
 
-  /**
-   * Delete an employee record.
-   */
-  deleteEmployee(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  deleteEmployee(id: string): Observable<ApiResponse<void>> {
+    return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/${id}`);
   }
 
-  /**
-   * Get all employees in a specific department.
-   */
-  getEmployeesByDepartment(departmentId: string): Observable<Employee[]> {
-    return this.getEmployees({ departmentId }).pipe(map(res => res.data));
+  uploadAvatar(employeeId: string, file: File): Observable<ApiResponse<{ avatarUrl: string }>> {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    return this.http.post<ApiResponse<{ avatarUrl: string }>>(
+      `${this.apiUrl}/${employeeId}/avatar`,
+      formData
+    );
+  }
+
+  getDirectReports(managerId: string): Observable<PaginatedResponse<Employee>> {
+    return this.http.get<PaginatedResponse<Employee>>(`${this.apiUrl}/${managerId}/reports`);
   }
 }

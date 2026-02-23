@@ -1,60 +1,62 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
-import { environment } from '../../../environments/environment';
-import { Department, CreateDepartmentDto, UpdateDepartmentDto } from '../models/department.model';
-import { ApiResponse } from '../models/api-response.model';
+import { environment } from '@environments/environment';
+import {
+  Department,
+  Position,
+  CreateDepartmentRequest,
+  UpdateDepartmentRequest
+} from '@core/models/department.model';
+import { ApiResponse, PaginatedResponse, PaginationParams } from '@core/models/api.model';
 
-/**
- * Department resource service.
- */
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class DepartmentService {
   private readonly apiUrl = `${environment.apiUrl}/departments`;
+  private readonly positionsUrl = `${environment.apiUrl}/positions`;
 
   constructor(private http: HttpClient) {}
 
-  /**
-   * Fetch all departments.
-   */
-  getDepartments(): Observable<Department[]> {
-    return this.http.get<Department[]>(this.apiUrl);
+  getDepartments(
+    pagination?: PaginationParams,
+    includeInactive = false
+  ): Observable<PaginatedResponse<Department>> {
+    let params = new HttpParams();
+    if (pagination?.page) params = params.set('page', pagination.page);
+    if (pagination?.pageSize) params = params.set('pageSize', pagination.pageSize);
+    if (pagination?.sortBy) params = params.set('sortBy', pagination.sortBy);
+    if (includeInactive) params = params.set('includeInactive', 'true');
+
+    return this.http.get<PaginatedResponse<Department>>(this.apiUrl, { params });
   }
 
-  /**
-   * Fetch a single department by ID.
-   */
-  getDepartment(id: string): Observable<Department> {
-    return this.http
-      .get<ApiResponse<Department>>(`${this.apiUrl}/${id}`)
-      .pipe(map(res => res.data));
+  getDepartment(id: string): Observable<ApiResponse<Department>> {
+    return this.http.get<ApiResponse<Department>>(`${this.apiUrl}/${id}`);
   }
 
-  /**
-   * Create a new department.
-   */
-  createDepartment(dept: CreateDepartmentDto): Observable<Department> {
-    return this.http
-      .post<ApiResponse<Department>>(this.apiUrl, dept)
-      .pipe(map(res => res.data));
+  createDepartment(payload: CreateDepartmentRequest): Observable<ApiResponse<Department>> {
+    return this.http.post<ApiResponse<Department>>(this.apiUrl, payload);
   }
 
-  /**
-   * Update a department.
-   */
-  updateDepartment(id: string, updates: UpdateDepartmentDto): Observable<Department> {
-    return this.http
-      .put<ApiResponse<Department>>(`${this.apiUrl}/${id}`, updates)
-      .pipe(map(res => res.data));
+  updateDepartment(
+    id: string,
+    payload: UpdateDepartmentRequest
+  ): Observable<ApiResponse<Department>> {
+    return this.http.patch<ApiResponse<Department>>(`${this.apiUrl}/${id}`, payload);
   }
 
-  /**
-   * Delete a department.
-   */
-  deleteDepartment(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  deleteDepartment(id: string): Observable<ApiResponse<void>> {
+    return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/${id}`);
+  }
+
+  // Positions
+  getPositions(departmentId?: string): Observable<PaginatedResponse<Position>> {
+    let params = new HttpParams();
+    if (departmentId) params = params.set('departmentId', departmentId);
+    return this.http.get<PaginatedResponse<Position>>(this.positionsUrl, { params });
+  }
+
+  getPosition(id: string): Observable<ApiResponse<Position>> {
+    return this.http.get<ApiResponse<Position>>(`${this.positionsUrl}/${id}`);
   }
 }

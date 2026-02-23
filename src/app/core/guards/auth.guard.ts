@@ -1,45 +1,20 @@
-import { Injectable } from '@angular/core';
-import { CanActivate, CanActivateChild, Router, ActivatedRouteSnapshot, RouterStateSnapshot, UrlTree } from '@angular/router';
-import { Observable } from 'rxjs';
-import { AuthService } from '../services/auth.service';
+import { inject } from '@angular/core';
+import { CanActivateFn, Router } from '@angular/router';
+import { AuthService } from '@core/services/auth.service';
 
 /**
- * Guards routes that require authentication.
- * Redirects unauthenticated users to /auth/login,
- * preserving the attempted URL for post-login redirect.
+ * Protects routes that require an authenticated user.
+ * Redirects unauthenticated users to the login page.
  */
-@Injectable({
-  providedIn: 'root'
-})
-export class AuthGuard implements CanActivate, CanActivateChild {
+export const authGuard: CanActivateFn = (route, state) => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
 
-  constructor(
-    private authService: AuthService,
-    private router: Router,
-  ) {}
-
-  canActivate(
-    route: ActivatedRouteSnapshot,
-    state: RouterStateSnapshot,
-  ): boolean | UrlTree {
-    return this.checkAuth(state.url);
+  if (authService.isAuthenticated()) {
+    return true;
   }
 
-  canActivateChild(
-    childRoute: ActivatedRouteSnapshot,
-    state: RouterStateSnapshot,
-  ): boolean | UrlTree {
-    return this.checkAuth(state.url);
-  }
-
-  private checkAuth(url: string): boolean | UrlTree {
-    if (this.authService.isAuthenticated) {
-      return true;
-    }
-
-    // Preserve the intended URL so we can redirect after login
-    return this.router.createUrlTree(['/auth/login'], {
-      queryParams: { returnUrl: url },
-    });
-  }
-}
+  // Store attempted URL for redirect after login
+  router.navigate(['/auth/login'], { queryParams: { returnUrl: state.url } });
+  return false;
+};

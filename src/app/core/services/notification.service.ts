@@ -1,56 +1,45 @@
-import { Injectable } from '@angular/core';
-import { MatSnackBar, MatSnackBarConfig } from '@angular/material/snack-bar';
+import { Injectable, signal } from '@angular/core';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
-/**
- * Centralized notification service using Angular Material Snackbar.
- * Provides success, error, warning, and info messages.
- */
-@Injectable({
-  providedIn: 'root'
-})
+export type SnackType = 'success' | 'error' | 'warning' | 'info';
+
+@Injectable({ providedIn: 'root' })
 export class NotificationService {
-  private defaultConfig: MatSnackBarConfig = {
-    duration: 4000,
-    horizontalPosition: 'end',
-    verticalPosition: 'top',
-  };
+  private readonly _unreadCount = signal(0);
+  readonly unreadCount = this._unreadCount.asReadonly();
 
   constructor(private snackBar: MatSnackBar) {}
 
-  /** Show a success notification */
-  success(message: string, action = 'Dismiss'): void {
-    this.snackBar.open(message, action, {
-      ...this.defaultConfig,
-      panelClass: ['success-snackbar'],
-    });
+  success(message: string, duration = 3000): void {
+    this.show(message, 'success', duration);
   }
 
-  /** Show an error notification (longer duration) */
-  error(message: string, action = 'Dismiss'): void {
-    this.snackBar.open(message, action, {
-      ...this.defaultConfig,
-      duration: 6000,
-      panelClass: ['error-snackbar'],
-    });
+  error(message: string, duration = 5000): void {
+    this.show(message, 'error', duration);
   }
 
-  /** Show a warning notification */
-  warning(message: string, action = 'Dismiss'): void {
-    this.snackBar.open(message, action, {
-      ...this.defaultConfig,
-      panelClass: ['warning-snackbar'],
-    });
+  warning(message: string, duration = 4000): void {
+    this.show(message, 'warning', duration);
   }
 
-  /** Show an info notification */
-  info(message: string, action = 'Dismiss'): void {
-    this.snackBar.open(message, action, {
-      ...this.defaultConfig,
-    });
+  info(message: string, duration = 3000): void {
+    this.show(message, 'info', duration);
   }
 
-  /** Dismiss the current snackbar */
-  dismiss(): void {
-    this.snackBar.dismiss();
+  incrementUnread(): void {
+    this._unreadCount.update((n) => n + 1);
+  }
+
+  clearUnread(): void {
+    this._unreadCount.set(0);
+  }
+
+  private show(message: string, type: SnackType, duration: number): void {
+    this.snackBar.open(message, 'Dismiss', {
+      duration,
+      panelClass: [`snack-${type}`],
+      horizontalPosition: 'end',
+      verticalPosition: 'top'
+    });
   }
 }

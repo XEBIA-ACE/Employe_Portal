@@ -1,0 +1,94 @@
+/* ===========================
+   Employee Portal Global Styles
+   =========================== */
+
+/* Reset & base */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: 'Roboto', 'Helvetica Neue', sans-serif;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.87);
+  background-color: #f5f5f5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 { font-weight: 500; }
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.4); }
+
+/* ===========================
+   Snackbar notification styles
+   =========================== */
+.snack-success .mdc-snackbar__surface { background-color: #4caf50 !important; }
+.snack-error .mdc-snackbar__surface { background-color: #f44336 !important; }
+.snack-warning .mdc-snackbar__surface { background-color: #ff9800 !important; }
+.snack-info .mdc-snackbar__surface { background-color: #2196f3 !important; }
+
+.mat-mdc-snack-bar-container .mdc-snackbar__label,
+.mat-mdc-snack-bar-container .mat-mdc-button { color: #fff !important; }
+
+/* ===========================
+   Angular Material overrides
+   =========================== */
+
+/* Cards */
+.mat-mdc-card { border-radius: 12px !important; }
+
+/* Dialogs */
+.mat-mdc-dialog-container .mdc-dialog__surface { border-radius: 12px !important; }
+
+/* Tables */
+.mat-mdc-table { background: #fff; }
+.mat-mdc-header-row { background: #fafafa; }
+.mat-mdc-header-cell { font-weight: 600 !important; color: rgba(0,0,0,.7) !important; }
+.mat-mdc-row:hover { background: rgba(63, 81, 181, 0.04); }
+
+/* Chips */
+.mat-mdc-chip { font-size: 0.75rem !important; }
+
+/* ===========================
+   Layout utilities
+   =========================== */
+
+.flex { display: flex; }
+.flex-center { display: flex; align-items: center; justify-content: center; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.flex-col { display: flex; flex-direction: column; }
+.gap-8 { gap: 8px; }
+.gap-16 { gap: 16px; }
+.gap-24 { gap: 24px; }
+
+/* Spacing */
+.mt-16 { margin-top: 16px; }
+.mb-16 { margin-bottom: 16px; }
+.p-16 { padding: 16px; }
+.p-24 { padding: 24px; }
+
+/* Text utilities */
+.text-muted { color: rgba(0,0,0,.5); }
+.text-center { text-align: center; }
+.text-sm { font-size: 0.875rem; }
+.font-bold { font-weight: 600; }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Full width */
+.full-width { width: 100%; }
+
+/* ===========================
+   Responsive breakpoints
+   =========================== */
+@media (max-width: 768px) {
+  .hide-mobile { display: none !important; }
+}
+
+@media (min-width: 769px) {
+  .hide-desktop { display: none !important; }
+}

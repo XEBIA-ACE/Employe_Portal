@@ -1,50 +1,50 @@
-import { Injectable } from '@angular/core';
-import {
-  HttpRequest,
-  HttpHandler,
-  HttpEvent,
-  HttpInterceptor,
-} from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { AuthService } from '../services/auth.service';
+import { HttpInterceptorFn, HttpRequest, HttpHandlerFn, HttpErrorResponse } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { throwError, catchError, switchMap } from 'rxjs';
+import { AuthService } from '@core/services/auth.service';
+import { LoggerService } from '@core/services/logger.service';
 
 /**
- * HTTP interceptor that attaches the JWT Bearer token to all outgoing requests.
- * Skips public endpoints (login, etc.).
+ * Attaches the Bearer access token to every outgoing API request.
+ * On 401, attempts a token refresh once; on second 401, clears session.
  */
-@Injectable()
-export class AuthInterceptor implements HttpInterceptor {
-  private readonly publicEndpoints = [
-    '/auth/login',
-    '/auth/register',
-    '/auth/forgot-password',
-  ];
+export const authInterceptor: HttpInterceptorFn = (
+  req: HttpRequest<unknown>,
+  next: HttpHandlerFn
+) => {
+  const authService = inject(AuthService);
+  const logger = inject(LoggerService);
 
-  constructor(private authService: AuthService) {}
-
-  intercept(req: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
-    // Don't attach token to public endpoints
-    if (this.isPublicEndpoint(req.url)) {
-      return next.handle(req);
-    }
-
-    const token = this.authService.getAccessToken();
-    if (!token) {
-      return next.handle(req);
-    }
-
-    // Clone the request and add the Authorization header
-    const authReq = req.clone({
-      setHeaders: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': req.headers.get('Content-Type') ?? 'application/json',
-      },
-    });
-
-    return next.handle(authReq);
+  // Skip auth header for login/refresh endpoints
+  if (req.url.includes('/auth/login') || req.url.includes('/auth/refresh')) {
+    return next(req);
   }
 
-  private isPublicEndpoint(url: string): boolean {
-    return this.publicEndpoints.some(endpoint => url.includes(endpoint));
-  }
+  const token = authService.getAccessToken();
+  const authReq = token ? addToken(req, token) : req;
+
+  return next(authReq).pipe(
+    catchError((error: HttpErrorResponse) => {
+      if (error.status === 401 && token) {
+        // Token expired — attempt silent refresh
+        logger.debug('Access token expired, attempting refresh');
+        return authService.refreshToken().pipe(
+          switchMap((response) => {
+            const newToken = response.data.accessToken;
+            return next(addToken(req, newToken));
+          }),
+          catchError((refreshError) => {
+            logger.error('Token refresh failed, logging out', refreshError);
+            authService.logout();
+            return throwError(() => refreshError);
+          })
+        );
+      }
+      return throwError(() => error);
+    })
+  );
+};
+
+function addToken(req: HttpRequest<unknown>, token: string): HttpRequest<unknown> {
+  return req.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
 }
